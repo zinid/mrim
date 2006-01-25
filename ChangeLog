@@ -1,0 +1,13 @@
+2006-01-25  Evgeniy Khramtsov  <xramtsov@gmail.com>
+
+	* config.py:
+	 Added "admins" option in section "main".
+	 Added default values.
+	* transport.py:
+	 Only admins can see disco#items/online.
+
+2006-01-15  Evgeniy Khramtsov  <xramtsov@gmail.com>
+
+	* ChangeLog:
+	 It exists now :)
+	 Fully JEP-100 compliance.

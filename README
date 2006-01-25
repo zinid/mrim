@@ -1,0 +1,24 @@
+Mrim is an Open Source (GPL) XMPP to Mail.ru-IM Transport (aka M-Agent).
+It is written in Python and built on top of xmpp.py library (http://xmpppy.sourceforge.net).
+It can run on any platform, that Python supports: Linux, FreeBSD, Windows etc.
+
+Features:
+
+	* Full featured search, avatars, and offline message support.
+	* Gateway statistics (usefull for administrators)
+	* Mail notifications.
+
+Supported JEPs:
+
+	* Gateway Interaction (JEP-0100)
+	* Roster Item Exchange (JEP-0144)
+	* vcard-temp (JEP-0054) and vCard-Based Avatars (JEP-0153)
+	* Jabber Search (JEP-0055) with Data Forms (JEP-0004)
+	* Message Events ("delivered" and "composing") (JEP-0022)
+	* Delayed Delivery (JEP-0091)
+	* Only for gateway:
+		Entity Time (JEP-0090)
+		Software Version (JEP-0092)
+		Statistics Gathering (JEP-0039)
+
+For installation notes refer to INSTALL file.
