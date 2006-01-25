@@ -11,10 +11,6 @@ import utils
 
 conf = config.Config()
 
-proxy = urllib2.ProxyHandler({"http" : "http://%s:%s" % ('localhost', 3128)})
-opener = urllib2.build_opener(proxy)
-urllib2.install_opener(opener)
-
 while 1:
 	try:
 		xmpp_con = transport.XMPPTransport(conf.name,conf.disconame,conf.server,conf.port,conf.passwd)
