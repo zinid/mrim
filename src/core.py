@@ -224,10 +224,18 @@ class Client(asyncore.dispatcher_with_send):
 			self.mmp_handler_got_contact_list2()
 
 		elif ptype == MRIM_CS_MAILBOX_STATUS:
-			n = mmp_packet.getBodyAttr('status')
-			utils.start_daemon(self._got_new_mail, (n,))
+			n = mmp_packet.getBodyAttr('count')
+			sender = utils.win2str(mmp_packet.getBodyAttr('sender'))
+			subject = utils.win2str(mmp_packet.getBodyAttr('subject'))
+			unix_time = mmp_packet.getBodyAttr('unix_time')
+			email_key = mmp_packet.getBodyAttr('key')
+			utils.start_daemon(self._got_new_mail, (n,sender,subject,unix_time,email_key))
+		
+		elif ptype == MRIM_CS_MAILBOX_STATUS_OLD:
+			status = mmp_packet.getBodyAttr('status')
+			self.mmp_handler_got_mailbox_status_old(status)
 
-		elif ptype == MRIM_CS_MBOX_STATUS:
+		elif ptype == MRIM_CS_USER_INFO:
 			total = mmp_packet.getBodyAttr('total')
 			unread = mmp_packet.getBodyAttr('unread')
 			nickname = mmp_packet.getBodyAttr('nickname')
@@ -412,19 +420,19 @@ class Client(asyncore.dispatcher_with_send):
 				t -= 1
 		self.mmp_handler_got_mbox_status(total, unread, url)
 
-	def _got_new_mail(self, number):
+	def _got_new_mail(self, number, sender, subject, unix_time, email_key):
 		self.mmp_get_mbox_key()
 		t = self.ping_period
 		url = self._mbox_url+'unknown'
 		while t>0:
 			if self._mbox_key_status == 'new':
-				url = self._mbox_url+self._mbox_key
+				url = self._mbox_url+self._mbox_key #+str(email_key)
 				self._mbox_key_status = 'old'
 				break
 			else:
 				time.sleep(1)
 				t -= 1
-		self.mmp_handler_got_new_mail(number, url)
+		self.mmp_handler_got_new_mail(number, sender, subject, unix_time, url)
 
 	def _get_avatar(self, mail, ackf, acka):
 		avatara = ''
@@ -530,7 +538,8 @@ class Client(asyncore.dispatcher_with_send):
 			'group_id': 0,
 			'email': e_mail,
 			'name': enc_nick,
-			'unknown':0
+			'UNKNOWN':0,
+			'text':' '
 		}
 		p = protocol.MMPPacket(typ=MRIM_CS_ADD_CONTACT,dict=d)
 		ret_id = self._send_packet(p)
@@ -570,7 +579,7 @@ class Client(asyncore.dispatcher_with_send):
 				'group_id':0,
 				'contact':e_mail,
 				'name':utils.str2win(name),
-				'unknown':0
+				'UNKNOWN':0
 			}
 			p = protocol.MMPPacket(typ=MRIM_CS_MODIFY_CONTACT,dict=d)
 			ret_id = self._send_packet(p)
@@ -604,7 +613,7 @@ class Client(asyncore.dispatcher_with_send):
 	def mmp_handler_got_message(self, mess, time):
 		pass
 
-	def mmp_handler_got_new_mail(self, messages_number, url):
+	def mmp_handler_got_new_mail(self, number, sender, subject, unix_time, url):
 		pass
 
 	def mmp_handler_got_user_status(self, e_mail, status):
@@ -629,6 +638,9 @@ class Client(asyncore.dispatcher_with_send):
 		pass
 
 	def mmp_handler_got_mbox_status(self, total, unread, url):
+		pass
+
+	def mmp_handler_got_mailbox_status_old(self, status):
 		pass
 
 	def mmp_handler_got_anketa(self, anketa, msg_id):

@@ -148,7 +148,8 @@ class MMPBody(UserDict.UserDict):
 			self['group_id'] = self._read_ul()
 			self['email'] = self._read_lps()
 			self['name'] = self._read_lps()
-			self['unknown'] = self._read_ul()
+			self['UNKNOWN'] = self._read_ul()
+			self['text'] = self._read_lps()
 		elif self.typ == MRIM_CS_ADD_CONTACT_ACK:
 			self['status'] = self._read_ul()
 			current_position = self.io.tell()
@@ -164,7 +165,7 @@ class MMPBody(UserDict.UserDict):
 			self['group_id'] = self._read_ul()
 			self['contact'] = self._read_lps()
 			self['name'] = self._read_lps()
-			self['unknown'] = self._read_ul()
+			self['UNKNOWN'] = self._read_ul()
 		elif self.typ == MRIM_CS_MODIFY_CONTACT_ACK:
 			self['status'] = self._read_ul()
 		elif self.typ == MRIM_CS_OFFLINE_MESSAGE_ACK:
@@ -209,6 +210,12 @@ class MMPBody(UserDict.UserDict):
 				else:
 					break
 		elif self.typ == MRIM_CS_MAILBOX_STATUS:
+			self['count'] = self._read_ul()
+			self['sender'] = self._read_lps()
+			self['subject'] = self._read_lps()
+			self['unix_time'] = self._read_ul()
+			self['key'] = self._read_ul()
+		elif self.typ == MRIM_CS_MAILBOX_STATUS_OLD:
 			self['status'] = self._read_ul()
 		elif self.typ == MRIM_CS_CONTACT_LIST2:
 			self['status'] = self._read_ul()
@@ -242,7 +249,7 @@ class MMPBody(UserDict.UserDict):
 			self['status'] = self._read_ul()
 			self['user_agent'] = self._read_lps()
 
-		elif self.typ == MRIM_CS_MBOX_STATUS:
+		elif self.typ == MRIM_CS_USER_INFO:
 			current_position = self.io.tell()
 			while 1:
 				next_char = self.io.read(1)
@@ -295,7 +302,8 @@ class MMPBody(UserDict.UserDict):
 			self._write_ul(dict['group_id'])
 			self._write_lps(dict['email'])
 			self._write_lps(dict['name'])
-			self._write_ul(dict['unknown'])
+			self._write_ul(dict['UNKNOWN'])
+			self._write_lps(dict['text'])
 		elif self.typ == MRIM_CS_ADD_CONTACT_ACK:
 			self._write_ul(dict['status'])
 			self._write_ul(dict['contact_id'])
@@ -305,7 +313,7 @@ class MMPBody(UserDict.UserDict):
 			self._write_ul(dict['group_id'])
 			self._write_lps(dict['contact'])
 			self._write_lps(dict['name'])
-			self._write_ul(dict['unknown'])
+			self._write_ul(dict['UNKNOWN'])
 		elif self.typ == MRIM_CS_MODIFY_CONTACT_ACK:
 			self._write_ul(dict['status'])
 		elif self.typ == MRIM_CS_OFFLINE_MESSAGE_ACK:

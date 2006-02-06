@@ -2,7 +2,7 @@
 # Pythonized version of C-header with some additions (country/region/zodiac codes)
 
 PROTO_VERSION_MAJOR = 1L
-PROTO_VERSION_MINOR = 8L
+PROTO_VERSION_MINOR = 9L
 PROTO_VERSION = (PROTO_VERSION_MAJOR << 16) | (PROTO_VERSION_MINOR)
 
 CS_MAGIC = 0xDEADBEEFL		# Клиентский Magic ( C <-> S )
@@ -102,6 +102,8 @@ CONTACT_FLAG_VISIBLE = 0x00000008
 CONTACT_FLAG_IGNORE = 0x00000010
 CONTACT_FLAG_SHADOW = 0x00000020
 ####################################
+
+MRIM_CS_USER_INFO = 0x1015			# S -> C
 
 ####################################
 MRIM_CS_ADD_CONTACT_ACK = 0x101A		# S -> C
@@ -217,10 +219,21 @@ MRIM_ANKETA_INFO_STATUS_RATELIMERR = 3
 '''
 ########################################
 
-MRIM_CS_MAILBOX_STATUS = 0x1033
+#MRIM_CS_MAILBOX_STATUS = 0x1033
+#'''
+#	DWORD new messages in mailbox
+#'''
+
+MRIM_CS_MAILBOX_STATUS = 0x1048			# S -> C
 '''
-	DWORD new messages in mailbox
+	UL - message number
+	LPS - sender
+	LPS - subject
+	UL - unix_time
+	UL - unknown
 '''
+
+MRIM_CS_MAILBOX_STATUS_OLD = 0x1033		# S -> C
 
 ########################################
 MRIM_CS_CONTACT_LIST2 = 0x1037			#S->C
@@ -258,7 +271,6 @@ MAX_CLIENT_DESCRIPTION = 256
 '''
 
 # Not described in protocol! (mail.ru sucks)
-MRIM_CS_MBOX_STATUS = 0x1015			# S -> C
 #MRIM_CS_FILE_TRANSFER = 0x1026			# S -> C
 
 ZODIAC = {

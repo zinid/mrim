@@ -29,7 +29,7 @@ class MMPConnection(core.Client):
 		self.conn_spool = conn_spool
 		self.jid = xmpp.JID(xmpp.JID(jid).getStripped())
 		self.zombie = zombie
-		self.mail_number = 0
+		#self.mail_number = 0
 		self.starttime = time.time()
 		self.typing_users = {}
 		self.init_status = utils.show2status(init_status)
@@ -269,7 +269,6 @@ class MMPConnection(core.Client):
 		self.send_stanza(composing, self.jid)
 
 	def mmp_handler_got_mbox_status(self, total, unread, url):
-		self.mail_number = unread
 		if not unread:
 			return
 		body = "Непрочитанных писем: %s\nВсего писем: %s" % (unread, total)
@@ -283,18 +282,23 @@ class MMPConnection(core.Client):
 		msg.addChild(node=xoob)
 		self.send_stanza(msg, self.jid)
 
-	def mmp_handler_got_new_mail(self, number, url):
-		if number < self.mail_number:
-			self.mail_number = number
-			return
-		self.mail_number = number
-		subject = "Вам пришло новое почтовое сообщение"
-		body = "Всего непрочитанных писем: %s" % number
+	def mmp_handler_got_new_mail(self, number, sender, subject, unix_time, url):
+		#if number < self.mail_number:
+		#	self.mail_number = number
+		#	return
+		#self.mail_number = number
+		ltime = time.strftime('%c', time.localtime(unix_time))
+		xmpp_subject = "Вам пришло новое почтовое сообщение"
+		body = "Отправитель: %s\n" % sender
+		body += "Тема: %s\n" % subject
+		#body += "Дата получения: %s\n" % ltime
+		body += 6*"-"+"\n"
+		body += "Всего непрочитанных писем: %s" % number
 		xoob = xmpp.simplexml.Node('x', attrs={'xmlns':'jabber:x:oob'})
 		xoob.setTagData('url', url)
 		xoob.setTagData('desc', 'Просмотреть')
 		msg = xmpp.Message(frm=conf.name,typ='headline')
-		msg.setSubject(subject)
+		msg.setSubject(xmpp_subject)
 		msg.setBody(body)
 		msg.addChild(node=xoob)
 		self.send_stanza(msg, self.jid)

@@ -189,7 +189,7 @@ class XMPPTransport:
 					return
 				iq_children = iq.getQueryChildren()
 				features = [c.getAttr('var') for c in iq_children if c.getName()=='feature']
-				if xmpp.NS_ROSTERX not in features:
+				if xmpp.NS_ROSTERX in features:
 					self.roster_exchange(jid_from)
 		else:
 			self.send_not_implemented(iq)
@@ -419,6 +419,8 @@ class XMPPTransport:
 		elif jid_to_stripped==self.name and typ=='get':
 			vcard = xmpp.Node('vCard', attrs={'xmlns':xmpp.NS_VCARD})
 			vcard.setTagData('NICKNAME', conf.program)
+			vcard.setTagData('DESC', 'XMPP to Mail.Ru-IM Transport')
+			vcard.setTagData('URL', 'http://svn.xmpp.ru/repos/mrim')
 			repl = iq.buildReply(typ='result')
 			repl.setPayload([vcard])
 			self.conn.send(repl)

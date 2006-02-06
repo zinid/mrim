@@ -6,7 +6,7 @@ import os
 import re
 
 PROGRAM = 'Mrim'
-VERSION = '0.1-svn-20060125'
+VERSION = '0.1-svn-20060203'
 DEFAULTS = {
 	'server':'localhost',
 	'disconame':'Mail.ru IM',
@@ -15,7 +15,8 @@ DEFAULTS = {
 	'reconnect':'on',
 	'probe':'on',
 	'show_os':'on',
-	'show_version':'on'
+	'show_version':'on',
+	'psyco':'off'
 }
 
 class Config:
@@ -46,6 +47,7 @@ class Config:
 		self.server = config.get('main', 'server')
 		self.port = config.getint('main', 'port')
 		self.passwd = config.get('main', 'password')
+		self.psyco = config.getboolean('main', 'psyco')
 		admins = config.get('main', 'admins')
 		self.admins = re.split(' *, *',admins)
 		self.reconnect = config.getboolean('main', 'reconnect')

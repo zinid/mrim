@@ -1,3 +1,18 @@
+2006-02-06  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* protocol.py, core.py:
+	 New "MRIM_CS_*_CONTACT" packets parsing.
+
+2006-02-03  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* mmptypes.py, protocol.py, core.py, glue.py:
+	 MMP v1.9 support with new mail notifications.
+	* utils.py:
+	 Small unicode fix.
+
+2006-01-30  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* main.py, config.py:
+	 Optional Psyco (http://psyco.sf.net) support for speed up.
+	 Added "psyco" option.
+
 2006-01-25  Evgeniy Khramtsov  <xramtsov@gmail.com>
 
 	* config.py:

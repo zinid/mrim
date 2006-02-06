@@ -46,7 +46,8 @@ def str2win(s):
 
 def win2str(s):
 	u_s = unicode(s, 'cp1251')
-	return unicode(u_s.encode(ENCODING, 'replace'),'utf-8')
+	#return unicode(u_s.encode(ENCODING, 'replace'),'utf-8')
+	return u_s.encode(ENCODING, 'replace')
 
 def log_handler(f, typ):
 	print "Invoke method %s for %s packet" % (f,hex(typ))
