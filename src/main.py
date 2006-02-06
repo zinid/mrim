@@ -11,10 +11,6 @@ import utils
 
 conf = config.Config()
 
-proxy = urllib2.ProxyHandler({"http" : "http://%s:%s" % ('localhost', 3128)})
-opener = urllib2.build_opener(proxy)
-urllib2.install_opener(opener)
-
 def main():
 	while 1:
 		try:
