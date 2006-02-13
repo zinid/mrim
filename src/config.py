@@ -6,7 +6,7 @@ import os
 import re
 
 PROGRAM = 'Mrim'
-VERSION = '0.1-svn-20060203'
+VERSION = '0.1-svn-20060216'
 DEFAULTS = {
 	'server':'localhost',
 	'disconame':'Mail.ru IM',
