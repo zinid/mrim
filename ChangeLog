@@ -1,3 +1,7 @@
+2006-02-13  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* glue.py:
+	 Rosterx has been removed.
+
 2006-02-06  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* protocol.py, core.py:
 	 New "MRIM_CS_*_CONTACT" packets parsing.

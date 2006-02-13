@@ -11,7 +11,6 @@ Features:
 Supported JEPs:
 
 	* Gateway Interaction (JEP-0100)
-	* Roster Item Exchange (JEP-0144)
 	* vcard-temp (JEP-0054) and vCard-Based Avatars (JEP-0153)
 	* Jabber Search (JEP-0055) with Data Forms (JEP-0004)
 	* Message Events ("delivered" and "composing") (JEP-0022)

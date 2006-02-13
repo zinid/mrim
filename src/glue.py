@@ -158,13 +158,13 @@ class MMPConnection(core.Client):
 
 	def mmp_handler_got_contact_list2(self):
 
-		disco_info = xmpp.Iq(frm=conf.name,typ='get')
-		disco_info.setQueryNS(xmpp.NS_DISCO_INFO)
-		_id = 'rosterx_' + str(random.choice(xrange(1,1000)))
-		disco_info.setAttr('id', _id)
-		self.ids.append(_id)
-		self.send_stanza(disco_info)
-		self.roster_sync()
+		#disco_info = xmpp.Iq(frm=conf.name,typ='get')
+		#disco_info.setQueryNS(xmpp.NS_DISCO_INFO)
+		#_id = 'rosterx_' + str(random.choice(xrange(1,1000)))
+		#disco_info.setAttr('id', _id)
+		#self.ids.append(_id)
+		#self.send_stanza(disco_info)
+		#self.roster_sync()
 		for e_mail in self.contact_list.getEmails():
 			if self.contact_list.getAuthFlag(e_mail):
 				continue
