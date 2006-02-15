@@ -29,7 +29,6 @@ class MMPConnection(core.Client):
 		self.conn_spool = conn_spool
 		self.jid = xmpp.JID(xmpp.JID(jid).getStripped())
 		self.zombie = zombie
-		#self.mail_number = 0
 		self.starttime = time.time()
 		self.typing_users = {}
 		self.init_status = utils.show2status(init_status)
@@ -39,6 +38,7 @@ class MMPConnection(core.Client):
 		self.Roster = profile.Profile(self.jid)
 		core.Client.__init__(self,self.user,self.password,
 				agent=conf.agent,status=self.init_status)
+		self.run()
 
 	def send_stanza(self, stanza, jid=None):
 		typ = stanza.getType()
@@ -104,9 +104,17 @@ class MMPConnection(core.Client):
 
 	def failure_exit(self,errtxt):
 		self._is_authorized = False
-		t = random.choice(xrange(5,10))
-		self.broadcast_offline()
-		self.close()
+		t = random.choice(xrange(1,10))
+		if self.iq_register:
+			rej = xmpp.ERR_INTERNAL_SERVER_ERROR
+			rej_txt = i18n.CONNECTION_ERROR
+			self.xmpp_conn.send_error(self.iq_register,rej,rej_txt)
+		else:
+			self.broadcast_offline()
+		try:
+			self.close()
+		except:
+			pass
 		print "Legacy connection error:", errtxt
 		if conf.reconnect:
 			print "Reconnect over %s seconds..." % t
@@ -116,11 +124,31 @@ class MMPConnection(core.Client):
 		else:
 			self.conn_spool.remove(self.jid)
 
+	def run(self,server=None, port=None):
+
+		try:
+			print "Getting address of target server from mrim.mail.ru:2042..."
+			server,port = utils.get_server()
+		except socket.error, e:
+			if len(e.args)>1:
+				err_txt = e.args[1]
+			else:
+				err_txt = e.args[0]
+			self.failure_exit("Can't get address of target server (%s)" % err_txt)
+			return
+		if self.conn_spool.get(self.jid) == self:
+			self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+			print "Connecting to %s:%s..." % (server,port)
+			self.connect((server,port))
+
 	def mmp_handler_server_authorized(self):
 		if self.iq_register:
 			ok_iq = self.iq_register.buildReply(typ='result')
 			ok_iq.setPayload([],add=0)
 			self.xmpp_conn.send(ok_iq)
+			account = profile.Profile(self.jid)
+			account.setUsername(self.user)
+			account.setPassword(self.password)
 			self.exit(notify=False)
 		subscribe = xmpp.Presence(frm=conf.name,typ='subscribe')
 		online = xmpp.Presence(frm=conf.name)
@@ -158,13 +186,6 @@ class MMPConnection(core.Client):
 
 	def mmp_handler_got_contact_list2(self):
 
-		#disco_info = xmpp.Iq(frm=conf.name,typ='get')
-		#disco_info.setQueryNS(xmpp.NS_DISCO_INFO)
-		#_id = 'rosterx_' + str(random.choice(xrange(1,1000)))
-		#disco_info.setAttr('id', _id)
-		#self.ids.append(_id)
-		#self.send_stanza(disco_info)
-		#self.roster_sync()
 		for e_mail in self.contact_list.getEmails():
 			if self.contact_list.getAuthFlag(e_mail):
 				continue
@@ -180,37 +201,6 @@ class MMPConnection(core.Client):
 				elif s:
 					p.setShow(s)
 				self.send_stanza(p)
-
-	def clist2roster(self):
-		items = []
-		for e_mail in self.contact_list.getEmails():
-			if self.contact_list.getUserFlags(e_mail):
-				return
-			jid = utils.mail2jid(e_mail)
-			name = self.contact_list.getUserNick(e_mail)
-			gid = self.contact_list.getUserGroup(e_mail)
-			group = None
-			if gid:
-				group = self.contact_list.getGroupName(gid)
-			if self.contact_list.getAuthFlag(e_mail):
-				subscription = 'from'
-			else:
-				subscription = 'both'
-			attrs = {
-				'jid':jid,
-				'name':name,
-				'subscription':subscription
-			}
-			item = xmpp.Node('item', attrs=attrs)
-			if group:
-				item.setTagData('group', group)
-			items.append(item)
-		return items
-
-	def roster_sync(self):
-		clist = self.clist2roster()
-		#print [i.getAttrs() for i in clist]
-		#print self.Roster.roster2dict()
 
 	def mmp_handler_got_message(self, mess, offtime):
 		body = mess.getBodyPayload()
@@ -466,7 +456,7 @@ class MMPConnection(core.Client):
 		else:
 			vcard.setTagData('NICKNAME', anketa['Username'])
 		try:
-			bdate = tuple([int(x) for x in anketa['Birthday'].split('-')]+[0 for i in range(9)])[:9]
+			bdate = tuple([int(x) for x in anketa['Birthday'].split('-')]+[1 for i in range(9)])[:9]
 			vcard.setTagData('BDAY', time.strftime('%d %B %Y', bdate)+' г.')
 		except:
 			pass

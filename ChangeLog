@@ -1,3 +1,10 @@
+2006-02-15  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* protocol.py, glue.py, transport.py, core.py:
+	 64-bit platform fix.
+	 Disco#items shows legacy accounts.
+	 vCard date parsing fix (Python 2.4 issue).
+	 Small fix of initializing legacy connections.
+
 2006-02-13  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* glue.py:
 	 Rosterx has been removed.

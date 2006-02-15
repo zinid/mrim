@@ -108,7 +108,7 @@ class Client(asyncore.dispatcher_with_send):
 		else:
 			self._header = self.recv(44)
 			self._traff_in += len(self._header)
-			if len(self._header) == 44 and struct.unpack('L',self._header[:4])[0] == CS_MAGIC:
+			if len(self._header) == 44 and struct.unpack('I',self._header[:4])[0] == CS_MAGIC:
 				self.__parse_data()
 			elif 0 < len(self._header) < 44:
 				self._hlen = len(self._header)
@@ -120,7 +120,7 @@ class Client(asyncore.dispatcher_with_send):
 				return
 
 	def __parse_data(self):
-		self._blen = struct.unpack('L',self._header[16:20])[0]
+		self._blen = struct.unpack('I',self._header[16:20])[0]
 		if self._blen: 
 			self._body = self.recv(self._blen)
 			self._traff_in += len(self._body)
@@ -136,7 +136,7 @@ class Client(asyncore.dispatcher_with_send):
 
 	def _parse_raw_packet(self,header,body):
 
-		typ = struct.unpack('L', header[12:16])[0]
+		typ = struct.unpack('I', header[12:16])[0]
 		if typ not in packet_types:
 			print "!!! Ignore unknown MMP packet with type %s !!!" \
 				% hex(int(typ))
@@ -590,7 +590,10 @@ class Client(asyncore.dispatcher_with_send):
 	def mmp_connection_close(self):
 
 		self._is_connected = False
-		self.close()
+		try:
+			self.close()
+		except:
+			pass
 		print "Connection closed by ourselves"
 
 	def mmp_change_status(self, status):

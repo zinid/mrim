@@ -206,12 +206,16 @@ class XMPPTransport:
 			reply = iq.buildReply(typ='result')
 			if jid_from_stripped in conf.admins:
 				for jid in self.pool.getJids():
-					item_attrs = {
-						'jid':jid,
-						'name':xmpp.JID(jid).getNode(),
-					}
-					item = xmpp.Node('item',attrs=item_attrs)
-					items.append(item)
+					try:
+						legacy_user = self.pool.get(jid).user
+						item_attrs = {
+							'jid':jid,
+							'name':legacy_user,
+						}
+						item = xmpp.Node('item',attrs=item_attrs)
+						items.append(item)
+					except:
+						pass
 				reply.setQueryPayload(items)
 				reply.setTagAttr('query','node','online')
 			else:
@@ -262,9 +266,9 @@ class XMPPTransport:
 					text = i18n.INCORRECT_EMAIL
 					self.send_error(iq,error,text)
 					return
-				account = profile.Profile(jid_from_stripped)
-				account.setUsername(user)
-				account.setPassword(password)
+				#account = profile.Profile(jid_from_stripped)
+				#account.setUsername(user)
+				#account.setPassword(password)
 				mmp_conn = self.pool.get(jid_from)
 				if mmp_conn:
 					mmp_conn.exit()
@@ -687,33 +691,18 @@ class XMPPTransport:
 		if not self.pool.lock(jid):
 			self.show_status(jid, init_status)
 			return
-		account = profile.Profile(xmpp.JID(jid).getStripped())
-		user = account.getUsername()
-		password = account.getPassword()
-		if not (user and password):
-			self.pool.unlock(jid)
-			return
-		try:
-			print "Getting address of target server from mrim.mail.ru:2042..."
-			server,port = utils.get_server()
-		except socket.error, e:
-			if len(e.args)>1:
-				err_txt = e.args[1]
-			else:
-				err_txt = e.args[0]
-			print "Can't get address of target server:", err_txt
-			if conf.reconnect:
-				t = random.choice(xrange(5,10))
-				print "Reconnect over %s seconds..." % t
-				time.sleep(t)
+		if iq_register:
+			user = iq_register.getTag('query').getTagData('email')
+			password = iq_register.getTag('query').getTagData('password')
+		else:
+			account = profile.Profile(xmpp.JID(jid).getStripped())
+			user = account.getUsername()
+			password = account.getPassword()
+			if not (user and password):
 				self.pool.unlock(jid)
-				self.zombie.put(jid)
-			self.pool.unlock(jid)
-			return
-		mrim_conn = glue.MMPConnection(user,password,self.conn,
+				return
+		glue.MMPConnection(user,password,self.conn,
 			jid,init_status,self.pool,self.zombie,iq_register)
-		#server,port = '194.67.57.142',2041
-		mrim_conn.run(server,port)
 
 	def send_not_implemented(self, iq):
 		if iq.getType() in ['set','get']:

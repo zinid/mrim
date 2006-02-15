@@ -35,6 +35,7 @@ class MMPHeader(UserDict.UserDict):
 		UserDict.UserDict.__init__(self)
 		self.header = header
 		self.typ = typ
+		self.frmt = '5I4s4s16B'
 		if not self.header:
 			self['magic'] = CS_MAGIC
 			self['proto'] = PROTO_VERSION
@@ -46,7 +47,7 @@ class MMPHeader(UserDict.UserDict):
 			self['reserved'] = tuple([0 for i in range(16)])
 		else:
 			try:
-				unpacked_header = struct.unpack('5L4s4s16B', self.header)
+				unpacked_header = struct.unpack(self.frmt, self.header)
 			except struct.error:
 				raise MMPParsingError("Can't unpack header", self.header)
 			self['magic'] = unpacked_header[0]
@@ -62,7 +63,7 @@ class MMPHeader(UserDict.UserDict):
 		if not self.header:
 			try:
 				new_header = struct.pack(
-					'5L4s4s16B',
+					self.frmt,
 					self['magic'],
 					self['proto'],
 					self['seq'],
@@ -357,7 +358,7 @@ class MMPBody(UserDict.UserDict):
 		return self.io.read()
 
 	def _read_ul(self):
-		return struct.unpack('L', self.io.read(4))[0]
+		return struct.unpack('I', self.io.read(4))[0]
 
 	def _read_lps(self):
 		return self.io.read(self._read_ul())
@@ -366,7 +367,7 @@ class MMPBody(UserDict.UserDict):
 		return self.io.read(8)
 
 	def _write_ul(self, ul):
-		self.io.write(struct.pack('L', ul))
+		self.io.write(struct.pack('I', ul))
 
 	def _write_lps(self, lps):
 		self._write_ul(len(lps))
@@ -395,7 +396,7 @@ class MMPPacket:
 		if packet:
 			raw_header = packet[:44]
 			try:
-				magic = struct.unpack('L', raw_header[:4])[0]
+				magic = struct.unpack('I', raw_header[:4])[0]
 			except:
 				magic = 0
 			if magic == CS_MAGIC:
