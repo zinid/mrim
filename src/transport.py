@@ -547,15 +547,31 @@ class XMPPTransport:
 		jid_to = presence.getTo()
 		jid_from_stripped = jid_from.getStripped()
 		jid_to_stripped = jid_to.getStripped()
-		if jid_to_stripped==self.name:
-			return
 		mmp_conn = self.pool.get(jid_from)
-		if mmp_conn and mmp_conn._got_roster:
+		if jid_to_stripped==self.name:
+			if mmp_conn:
+				mmp_conn.exit()
+			unsub = xmpp.Presence(to=jid_from_stripped,frm=self.name)
+			unsub.setType('unsubscribe')
+			self.conn.send(unsub)
+		elif mmp_conn and mmp_conn._got_roster:
 			e_mail = utils.jid2mail(jid_to_stripped)
 			mmp_conn.del_contact(e_mail)
 
 	def presence_unsubscribed_handler(self, presence):
-		pass
+		jid_from = presence.getFrom()
+		jid_to = presence.getTo()
+		jid_from_stripped = jid_from.getStripped()
+		jid_to_stripped = jid_to.getStripped()
+		mmp_conn = self.pool.get(jid_from)
+		if jid_to_stripped==self.name:
+			if mmp_conn:
+				mmp_conn.exit()
+			unsub = xmpp.Presence(to=jid_from_stripped,frm=self.name)
+			unsub.setType('unsubscribed')
+			self.conn.send(unsub)
+			account = profile.Profile(jid_from_stripped)
+			account.remove()
 
 	def presence_error_handler(self, presence):
 		pass
