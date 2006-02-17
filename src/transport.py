@@ -266,9 +266,6 @@ class XMPPTransport:
 					text = i18n.INCORRECT_EMAIL
 					self.send_error(iq,error,text)
 					return
-				#account = profile.Profile(jid_from_stripped)
-				#account.setUsername(user)
-				#account.setPassword(password)
 				mmp_conn = self.pool.get(jid_from)
 				if mmp_conn:
 					mmp_conn.exit()
@@ -290,7 +287,15 @@ class XMPPTransport:
 				if mmp_conn:
 					mmp_conn.exit()
 			else:
-				self.send_bad_request(iq)
+				tags_in_register_form = [child.getName() for child in query_tag.getChildren()]
+				if ['username', 'password', 'nick', 'key'] == tags_in_register_form:
+					pandion_suxx = "Please report to Pandion developers that their client doesn't really support forms and we know it ;)"
+					pandion_error = xmpp.Error(iq,xmpp.ERR_NOT_ACCEPTABLE)
+					pandion_error.getTag('error').setTagData('text', pandion_suxx)
+					self.conn.send(pandion_error)
+				else:
+					unknown_client_suxx = "Nice try =) Please report to developers that your client doesn't really support forms."
+					self.send_error(iq,error=xmpp.ERR_NOT_ACCEPTABLE,text=unknown_client_suxx)
 		else:
 			self.send_not_implemented(iq)
 
@@ -547,31 +552,15 @@ class XMPPTransport:
 		jid_to = presence.getTo()
 		jid_from_stripped = jid_from.getStripped()
 		jid_to_stripped = jid_to.getStripped()
-		mmp_conn = self.pool.get(jid_from)
 		if jid_to_stripped==self.name:
-			if mmp_conn:
-				mmp_conn.exit()
-			unsub = xmpp.Presence(to=jid_from_stripped,frm=self.name)
-			unsub.setType('unsubscribe')
-			self.conn.send(unsub)
-		elif mmp_conn and mmp_conn._got_roster:
+			return
+		mmp_conn = self.pool.get(jid_from)
+		if mmp_conn and mmp_conn._got_roster:
 			e_mail = utils.jid2mail(jid_to_stripped)
 			mmp_conn.del_contact(e_mail)
 
 	def presence_unsubscribed_handler(self, presence):
-		jid_from = presence.getFrom()
-		jid_to = presence.getTo()
-		jid_from_stripped = jid_from.getStripped()
-		jid_to_stripped = jid_to.getStripped()
-		mmp_conn = self.pool.get(jid_from)
-		if jid_to_stripped==self.name:
-			if mmp_conn:
-				mmp_conn.exit()
-			unsub = xmpp.Presence(to=jid_from_stripped,frm=self.name)
-			unsub.setType('unsubscribed')
-			self.conn.send(unsub)
-			account = profile.Profile(jid_from_stripped)
-			account.remove()
+		pass
 
 	def presence_error_handler(self, presence):
 		pass

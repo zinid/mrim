@@ -32,12 +32,12 @@ class MMPConnection(core.Client):
 		self.starttime = time.time()
 		self.typing_users = {}
 		self.init_status = utils.show2status(init_status)
-		self.conn_spool.push(jid,self)
 		self.roster_action = {}
 		self.ids = []
 		self.Roster = profile.Profile(self.jid)
 		core.Client.__init__(self,self.user,self.password,
 				agent=conf.agent,status=self.init_status)
+		self.conn_spool.push(jid,self)
 		self.run()
 
 	def send_stanza(self, stanza, jid=None):

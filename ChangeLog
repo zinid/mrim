@@ -1,6 +1,9 @@
-2006-02-16  Evgeniy Khramtsov  <xramtsov@gmail.com>
+2006-02-17  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* transport.py:
-	 Workaround: gateway unregister through unsubscribe stanzas (violates JEP-100!).
+	 Added graceful human-readable notification for users of jabber clients w/o
+	 proper registration forms support to upgrade their software (thanks to Igor Yermakov).
+	* glue.py:
+	 Adding connection to pool after core.Client.__init__().
 
 2006-02-15  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* protocol.py, glue.py, transport.py, core.py:
