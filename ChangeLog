@@ -1,3 +1,7 @@
+2006-02-20  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* core.py:
+	 Using callback instead of thread in mmp_get_mbox_key().
+
 2006-02-17  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* transport.py:
 	 Added graceful human-readable notification for users of jabber clients w/o

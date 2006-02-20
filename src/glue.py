@@ -258,7 +258,7 @@ class MMPConnection(core.Client):
 		composing.addChild(node=xevent)
 		self.send_stanza(composing, self.jid)
 
-	def mmp_handler_got_mbox_status(self, total, unread, url):
+	def mmp_handler_got_mbox_status(self, url, total, unread):
 		if not unread:
 			return
 		body = "Непрочитанных писем: %s\nВсего писем: %s" % (unread, total)
@@ -272,7 +272,7 @@ class MMPConnection(core.Client):
 		msg.addChild(node=xoob)
 		self.send_stanza(msg, self.jid)
 
-	def mmp_handler_got_new_mail(self, number, sender, subject, unix_time, url):
+	def mmp_handler_got_new_mail(self, url, number, sender, subject, unix_time):
 		#if number < self.mail_number:
 		#	self.mail_number = number
 		#	return

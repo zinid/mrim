@@ -39,8 +39,6 @@ class Client(asyncore.dispatcher_with_send):
 		self.__composing_container = []
 		self.__continue_body = False
 		self.__continue_header = False
-		self._mbox_key = 'unknown'
-		self._mbox_key_status = 'old'
 		self.contact_list = protocol.ContactList()
 		self._traff_in = 0
 		self._traff_out = 0
@@ -260,10 +258,7 @@ class Client(asyncore.dispatcher_with_send):
 		elif ptype == MRIM_CS_GET_MPOP_SESSION_ACK:
 			if mmp_packet.getBodyAttr('status'):
 				hash_key = mmp_packet.getBodyAttr('session')
-				self._mbox_key = hash_key
-				self._mbox_key_status = 'new'
-			else:
-				self._mbox_key_status = 'error'
+				_ack['ackf'](self._mbox_url+hash_key, **_ack['acka'])
 
 		elif ptype == MRIM_CS_CONNECTION_PARAMS:
 			self.ping_period = mmp_packet.getBodyAttr('ping_period')
@@ -407,32 +402,17 @@ class Client(asyncore.dispatcher_with_send):
 
 	def _got_mbox_status(self, total, unread):
 
-		self.mmp_get_mbox_key()
-		t = self.ping_period
-		url = self._mbox_url+'unknown'
-		while t>0:
-			if self._mbox_key_status == 'new':
-				url = self._mbox_url+self._mbox_key
-				self._mbox_key_status = 'old'
-				break
-			else:
-				time.sleep(1)
-				t -= 1
-		self.mmp_handler_got_mbox_status(total, unread, url)
+		self.mmp_get_mbox_key(ackf=self.mmp_handler_got_mbox_status,
+			acka={'total':total,'unread':unread})
 
 	def _got_new_mail(self, number, sender, subject, unix_time, email_key):
-		self.mmp_get_mbox_key()
-		t = self.ping_period
-		url = self._mbox_url+'unknown'
-		while t>0:
-			if self._mbox_key_status == 'new':
-				url = self._mbox_url+self._mbox_key #+str(email_key)
-				self._mbox_key_status = 'old'
-				break
-			else:
-				time.sleep(1)
-				t -= 1
-		self.mmp_handler_got_new_mail(number, sender, subject, unix_time, url)
+		d = {
+			'number':number,
+			'sender':sender,
+			'subject':subject,
+			'unix_time':unix_time
+		}
+		self.mmp_get_mbox_key(ackf=self.mmp_handler_got_new_mail,acka=d)
 
 	def _get_avatar(self, mail, ackf, acka):
 		avatara = ''
@@ -484,10 +464,12 @@ class Client(asyncore.dispatcher_with_send):
 			else:
 				time.sleep(interval-T)
 
-	def mmp_get_mbox_key(self):
+	def mmp_get_mbox_key(self, ackf=None, acka={}):
 
 		p = protocol.MMPPacket(typ=MRIM_CS_GET_MPOP_SESSION)
-		self._send_packet(p)
+		ret_id = self._send_packet(p)
+		if ackf:
+			self.ack_buf[ret_id] = {'ackf':ackf, 'acka':acka}
 
 	def mmp_send_typing_notify(self, to):
 
@@ -616,7 +598,7 @@ class Client(asyncore.dispatcher_with_send):
 	def mmp_handler_got_message(self, mess, time):
 		pass
 
-	def mmp_handler_got_new_mail(self, number, sender, subject, unix_time, url):
+	def mmp_handler_got_new_mail(self, url, number, sender, subject, unix_time):
 		pass
 
 	def mmp_handler_got_user_status(self, e_mail, status):
@@ -640,7 +622,7 @@ class Client(asyncore.dispatcher_with_send):
 	def mmp_handler_connection_close(self):
 		pass
 
-	def mmp_handler_got_mbox_status(self, total, unread, url):
+	def mmp_handler_got_mbox_status(self, url, total, unread):
 		pass
 
 	def mmp_handler_got_mailbox_status_old(self, status):
