@@ -15,13 +15,14 @@ import urllib2
 import locale
 import random
 import socket
+import logging
 
 conf = config.Config()
 locale.setlocale(locale.LC_ALL, 'ru_RU.UTF-8')
 
 class MMPConnection(core.Client):
 
-	def __init__(self, user, password,xmpp_conn, jid, init_status, conn_spool, zombie, iq_register):
+	def __init__(self, user, password, xmpp_conn, jid, init_status, conn_spool, zombie, iq_register, logger):
 		self.iq_register = iq_register
 		self.user = user
 		self.password = password
@@ -35,7 +36,7 @@ class MMPConnection(core.Client):
 		self.roster_action = {}
 		self.ids = []
 		self.Roster = profile.Profile(self.jid)
-		core.Client.__init__(self,self.user,self.password,
+		core.Client.__init__(self,self.user,self.password,logger,
 				agent=conf.agent,status=self.init_status)
 		self.conn_spool.push(jid,self)
 		self.run()
@@ -115,9 +116,9 @@ class MMPConnection(core.Client):
 			self.close()
 		except:
 			pass
-		print "Legacy connection error:", errtxt
+		self.log(logging.INFO, "Legacy connection error: %s" % errtxt)
 		if conf.reconnect:
-			print "Reconnect over %s seconds..." % t
+			self.log(logging.INFO, "Reconnect over %s seconds" % t)
 			time.sleep(t)
 			self.conn_spool.remove(self.jid)
 			self.zombie.put(self.jid)
@@ -127,7 +128,7 @@ class MMPConnection(core.Client):
 	def run(self,server=None, port=None):
 
 		try:
-			print "Getting address of target server from mrim.mail.ru:2042..."
+			self.log(logging.INFO, "Getting address of target server from mrim.mail.ru:2042")
 			server,port = utils.get_server()
 		except socket.error, e:
 			if len(e.args)>1:
@@ -138,7 +139,7 @@ class MMPConnection(core.Client):
 			return
 		if self.conn_spool.get(self.jid) == self:
 			self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-			print "Connecting to %s:%s..." % (server,port)
+			self.log(logging.INFO, "Connecting to %s:%s" % (server,port))
 			self.connect((server,port))
 
 	def mmp_handler_server_authorized(self):

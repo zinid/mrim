@@ -23,8 +23,8 @@ def start_daemon(func, variables, thread_name=''):
 	daemon.setDaemon(True)
 	daemon.start()
 	daemon_name = daemon.getName()
-	if daemon_name != 'asyncore_loop':
-		print "Thread %s has started" % daemon_name
+	#if daemon_name != 'asyncore_loop':
+	#	print "Thread %s has started" % daemon_name
 
 def dump_packet(p):
 	print "--- Begin of dump ---"

@@ -6,7 +6,7 @@ import os
 import re
 
 PROGRAM = 'Mrim'
-VERSION = '0.1-svn-20060220'
+VERSION = '0.1-svn-20060221'
 DEFAULTS = {
 	'server':'localhost',
 	'disconame':'Mail.ru IM',
@@ -16,7 +16,8 @@ DEFAULTS = {
 	'probe':'on',
 	'show_os':'on',
 	'show_version':'on',
-	'psyco':'off'
+	'psyco':'off',
+	'timestamp':'%%d/%%m/%%y-%%H:%%M:%%S'
 }
 
 class Config:
@@ -69,6 +70,9 @@ class Config:
 		self.profile_type = config.get('profile', 'type')
 		if self.profile_type == 'xml':
 			self.profile_dir = config.get('profile', 'dir')
+		self.logfile = config.get('logger','logfile')
+		self.loglevel = config.get('logger', 'loglevel')
+		self.timestamp = config.get('logger', 'timestamp')
 
 	def get_os(self):
 		v = [str(x) for x in sys.version_info[:3]]

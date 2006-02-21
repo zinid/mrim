@@ -12,6 +12,10 @@ import re
 import signal
 import urllib2
 import errno
+import logging
+import config
+
+conf = config.Config()
 
 packet_types = [locals()[key] for key in locals().keys() if key.startswith('MRIM_CS')]
 
@@ -22,7 +26,7 @@ del k,v
 
 class Client(asyncore.dispatcher_with_send):
 
-	def __init__(self, login, password,agent='Python MMP Library 0.1',
+	def __init__(self, login, password,logger,agent='Python MMP Library 0.1',
 			status=0,server='mrim.mail.ru',port=2042):
 
 		# some initial values
@@ -49,6 +53,16 @@ class Client(asyncore.dispatcher_with_send):
 		self.last_wp_req_time = time.time()
 		self.last_ping_time = time.time()
 		asyncore.dispatcher_with_send.__init__(self)
+		self.logger = logger
+
+	def log(self, level, message):
+		self.logger.log(level, '[%s] %s' % (self.__login, message))
+
+	def dump_packet(self, p):
+		dump = "--- begin ---\n"
+		dump += "Header: %s\nBody: %s\n" % (p.getHeader().__repr__(), p.getBody().__repr__())
+		dump += "--- end ---"
+		return dump
 
 	def recv(self, buffer_size):
 
@@ -72,12 +86,12 @@ class Client(asyncore.dispatcher_with_send):
 
 		self._is_connected = True
 		p = protocol.MMPPacket(typ=MRIM_CS_HELLO)
-		print "Connection OK, initializing the session"
+		self.log(logging.INFO, "Connection OK, sending HELLO")
 		self._send_packet(p)
 
 	def handle_expt(self):
 
-		print "Connection reset by peer"
+		self.log(logging.INFO, "Connection reset by peer")
 		self.mmp_handler_connection_close()
 
 	def handle_read(self):
@@ -114,7 +128,7 @@ class Client(asyncore.dispatcher_with_send):
 				self._hlen = 44 - self._hlen
 				return
 			elif len(self._header) >= 44:
-				print "Got junk or unexpected continuation of MMP packet"
+				self.log(logging.WARNING, "Got junk or unexpected continuation of MMP packet")
 				return
 
 	def __parse_data(self):
@@ -136,29 +150,30 @@ class Client(asyncore.dispatcher_with_send):
 
 		typ = struct.unpack('I', header[12:16])[0]
 		if typ not in packet_types:
-			print "!!! Ignore unknown MMP packet with type %s !!!" \
-				% hex(int(typ))
-			print "--- cut ---"
-			print "Parsed header:", protocol.MMPHeader(header=header).__repr__()
-			print "Header dump: %s" % header.__repr__()
-			print "Body dump: %s" % body.__repr__()
-			print "--- cut ---"
+			ignore_msg = "!!! Ignore unknown MMP packet with type %s !!!\n"  % hex(int(typ))
+			ignore_msg += "--- cut ---\n"
+			ignore_msg += "Parsed header: %s\n" % protocol.MMPHeader(header=header).__repr__()
+			ignore_msg += "Header dump: %s\n" % header.__repr__()
+			ignore_msg += "Body dump: %s\n" % body.__repr__()
+			ignore_msg += "--- cut ---\n"
+			self.log(logging.ERROR, ignore_msg)
 			return
-		print '\nGot %s packet (type=%s)' % (num_type[typ], hex(int(typ)))
+		log_got_packet = 'Got %s packet (type=%s):\n' % (num_type[typ], hex(int(typ)))
 		try:
 			mmp_packet = protocol.MMPPacket(packet=header+body)
 		except:
-			print "Can't parse packet - protocol parsing error!"
-			print "Packet dump: %s" % (header+body).__repr__()
+			parse_error = "Can't parse packet - protocol parsing error!\n"
+			parse_error += "Packet dump: %s\n" % (header+body).__repr__()
+			self.log(logging.ERROR, log_got_packet+parse_error)
 			traceback.print_exc()
 			return
-		utils.dump_packet(mmp_packet)
+		self.log(logging.DEBUG, log_got_packet+self.dump_packet(mmp_packet))
 		self._workup_packet(mmp_packet)
 
 	def handle_close(self):
 
 		self._is_connected = False
-		print "Connection reset by peer"
+		self.log(logging.INFO, "Connection reset by peer")
 		self.close()
 
 	def run(self,server=None, port=None):
@@ -168,7 +183,7 @@ class Client(asyncore.dispatcher_with_send):
 		else:
 			ip_port = utils.get_server(self.__server,self.__port)
 		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-		print "Connecting to %s:%s..." % ip_port
+		self.log(logging.INFO, "Connecting to %s:%s..." % ip_port)
 		self.connect(ip_port)
 
 	def ping(self):
@@ -184,18 +199,20 @@ class Client(asyncore.dispatcher_with_send):
 
 		if ptype == MRIM_CS_HELLO_ACK:
 			self.ping_period = mmp_packet.getBodyAttr('ping_period')
-			print "Server version is %s" % mmp_packet.getVersion()
-			print "Server has set ping period to %d seconds" % self.ping_period
+			self.log(logging.INFO, "Successfully connected")
+			self.log(logging.INFO, "Server version is %s" % mmp_packet.getVersion())
+			self.log(logging.INFO, "Server has set ping period to %d seconds" % self.ping_period)
 			self._got_hello_ack()
 
 		elif ptype == MRIM_CS_LOGIN_ACK:
 			self.ping()
 			self._is_authorized = True
+			self.log(logging.INFO, "Authorization successfull: logged in")
 			self.mmp_handler_server_authorized()
 
 		elif ptype == MRIM_CS_LOGIN_REJ:
 			res = utils.win2str(mmp_packet.getBodyAttr('reason'))
-			print "Authorization failure: %s" % res
+			self.log(logging.INFO, "Authorization failure: %s" % res)
 			self.mmp_handler_server_not_authorized(res)
 
 		elif ptype == MRIM_CS_MESSAGE_ACK:
@@ -247,13 +264,15 @@ class Client(asyncore.dispatcher_with_send):
 				self.mmp_handler_got_user_status(e_mail, status)
 
 		elif ptype == MRIM_CS_LOGOUT:
-			print "Server force logout with reason:",
+			log_reason = "Server force logout with reason: "
 			reason = mmp_packet.getBodyAttr('reason')
 			if reason == LOGOUT_NO_RELOGIN_FLAG:
-				print "dual login"
+				log_reason += "dual login"
+				self.log(logging.INFO, log_reason)
 				self.mmp_handler_dual_login()
 			else:
-				print "unknown (%s)" % hex(reason)
+				log_reason += "unknown (%s)" % hex(reason)
+				self.log(logging.INFO, log_reason)
 
 		elif ptype == MRIM_CS_GET_MPOP_SESSION_ACK:
 			if mmp_packet.getBodyAttr('status'):
@@ -311,7 +330,6 @@ class Client(asyncore.dispatcher_with_send):
 					'server_flags':1,
 					'status':_ack['status']
 				}
-				print self.contact_list.users
 				self.contact_list.cids[_ack['mail']] = mmp_packet.getBodyAttr('contact_id')
 			_ack['ackf'](status, **_ack['acka'])
 
@@ -326,8 +344,8 @@ class Client(asyncore.dispatcher_with_send):
 		typ = p.getType()
 		if not (self._is_authorized or (typ in [MRIM_CS_HELLO, MRIM_CS_LOGIN2])):
 			return p.getId()
-		print "\nSend %s packet (type=%s)" % (num_type[typ],hex(int(typ)))
-		utils.dump_packet(p)
+		self.log(logging.DEBUG, "Send %s packet (type=%s):\n%s" % 
+			(num_type[typ],hex(int(typ)), self.dump_packet(p)))
 		self.send(p.__str__())
 		self.last_ping_time = time.time()
 		self._traff_out += len(p.__str__())
@@ -350,6 +368,7 @@ class Client(asyncore.dispatcher_with_send):
 
 	def _got_hello_ack(self):
 
+		self.log(logging.INFO, "Sending credentials")
 		d = {
 			'login':self.__login,
 			'password':self.__password,
@@ -576,7 +595,7 @@ class Client(asyncore.dispatcher_with_send):
 			self.close()
 		except:
 			pass
-		print "Connection closed by ourselves"
+		self.log(logging.INFO, "Connection closed by ourselves")
 
 	def mmp_change_status(self, status):
 

@@ -17,6 +17,7 @@ import asyncore
 import Queue
 import random
 import socket
+import logging
 
 xmpp.NS_GATEWAY = 'jabber:iq:gateway'
 xmpp.NS_STATS = 'http://jabber.org/protocol/stats'
@@ -26,7 +27,7 @@ conf = config.Config()
 
 class XMPPTransport:
 
-	def __init__(self, name, disconame, server, port, password):
+	def __init__(self, name, disconame, server, port, password, logger):
 		self.name = name
 		self.disconame = disconame
 		self.port = port
@@ -36,6 +37,7 @@ class XMPPTransport:
 		self.pool = pool.MMPPool()
 		self.zombie = Queue.Queue()
 		self.full_stop = threading.Event()
+		self.logger = logger
 		self.server_features = [
 			xmpp.NS_DISCO_INFO,
 			xmpp.NS_DISCO_ITEMS,
@@ -707,7 +709,7 @@ class XMPPTransport:
 				self.pool.unlock(jid)
 				return
 		glue.MMPConnection(user,password,self.conn,
-			jid,init_status,self.pool,self.zombie,iq_register)
+			jid,init_status,self.pool,self.zombie,iq_register,self.logger)
 
 	def send_not_implemented(self, iq):
 		if iq.getType() in ['set','get']:
