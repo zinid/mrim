@@ -35,6 +35,7 @@ class MMPConnection(core.Client):
 		self.init_status = utils.show2status(init_status)
 		self.roster_action = {}
 		self.ids = []
+		self.authed_users = []
 		self.Roster = profile.Profile(self.jid)
 		core.Client.__init__(self,self.user,self.password,logger,
 				agent=conf.agent,status=self.init_status)
@@ -193,6 +194,7 @@ class MMPConnection(core.Client):
 			if not self.contact_list.getUserFlags(e_mail):
 				jid_from = utils.mail2jid(e_mail)
 				subscribe = xmpp.Presence(frm=jid_from,typ='subscribe')
+				self.authed_users.append(e_mail)
 				self.send_stanza(subscribe)
 				mrim_status = self.contact_list.getUserStatus(e_mail)
 				typ, s = utils.status2show(mrim_status)
@@ -234,6 +236,14 @@ class MMPConnection(core.Client):
 	def mmp_handler_got_subscribed(self, e_mail):
 		subscribed = xmpp.Presence(frm=utils.mail2jid(e_mail),typ='subscribed')
 		self.send_stanza(subscribed)
+
+	def mmp_send_subscribed(self, to):
+		"Roster-sync workaround"
+		p = protocol.MMPPacket(typ=MRIM_CS_AUTHORIZE,dict={'user':to})
+		try:
+			self.authed_users.pop(self.authed_users.index(to))
+		except (ValueError,IndexError):
+			self._send_packet(p)
 
 	def mmp_handler_dual_login(self):
 		reject = xmpp.Message(to=self.jid, frm=conf.name)
@@ -457,8 +467,9 @@ class MMPConnection(core.Client):
 		else:
 			vcard.setTagData('NICKNAME', anketa['Username'])
 		try:
-			bdate = tuple([int(x) for x in anketa['Birthday'].split('-')]+[1 for i in range(9)])[:9]
-			vcard.setTagData('BDAY', time.strftime('%d %B %Y', bdate)+' г.')
+			#bdate = tuple([int(x) for x in anketa['Birthday'].split('-')]+[1 for i in range(9)])[:9]
+			#vcard.setTagData('BDAY', time.strftime('%d %B %Y', bdate)+' г.')
+			vcard.setTagData('BDAY',anketa['Birthday'])
 		except:
 			pass
 			#traceback.print_exc()

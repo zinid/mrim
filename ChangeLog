@@ -1,3 +1,15 @@
+2006-02-23  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* glue.py:
+	 vCard bugfix: 'BDAY' must be of type 'YYYY-MM-DD' (thanks to Oleg Motienko).
+	 Contact list synchronization fix.
+
+2006-02-21  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* core.py, glue.py, main.py, transport.py:
+	 Using python logging module for core.Client and xmpppy debug.
+	* config.py, mrim.conf:
+	 Added section [logger].
+	 Added 'loglevel','logfile' and 'timestamp' options to section [logger].
+
 2006-02-20  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* core.py:
 	 Using callback instead of thread in mmp_get_mbox_key().
