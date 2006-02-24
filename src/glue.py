@@ -36,6 +36,7 @@ class MMPConnection(core.Client):
 		self.roster_action = {}
 		self.ids = []
 		self.authed_users = []
+		self.mrim_host_ip = ''
 		self.Roster = profile.Profile(self.jid)
 		core.Client.__init__(self,self.user,self.password,logger,
 				agent=conf.agent,status=self.init_status)
@@ -83,7 +84,7 @@ class MMPConnection(core.Client):
 
 	def handle_expt(self):
 
-		self.failure_exit("Connection reset by peer")
+		self.failure_exit("Connection has been closed abnormally")
 
 	def handle_close(self):
 
@@ -117,7 +118,7 @@ class MMPConnection(core.Client):
 			self.close()
 		except:
 			pass
-		self.log(logging.INFO, "Legacy connection error: %s" % errtxt)
+		self.log(logging.INFO, "Legacy connection error (%s): %s" % (self.mrim_host_ip, errtxt))
 		if conf.reconnect:
 			self.log(logging.INFO, "Reconnect over %s seconds" % t)
 			time.sleep(t)
@@ -130,7 +131,7 @@ class MMPConnection(core.Client):
 
 		try:
 			self.log(logging.INFO, "Getting address of target server from mrim.mail.ru:2042")
-			server,port = utils.get_server()
+			self.mrim_host_ip,port = utils.get_server()
 		except socket.error, e:
 			if len(e.args)>1:
 				err_txt = e.args[1]
@@ -140,8 +141,8 @@ class MMPConnection(core.Client):
 			return
 		if self.conn_spool.get(self.jid) == self:
 			self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-			self.log(logging.INFO, "Connecting to %s:%s" % (server,port))
-			self.connect((server,port))
+			self.log(logging.INFO, "Connecting to %s:%s" % (self.mrim_host_ip,port))
+			self.connect((self.mrim_host_ip,port))
 
 	def mmp_handler_server_authorized(self):
 		if self.iq_register:

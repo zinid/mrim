@@ -1,3 +1,7 @@
+2006-02-24  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* glue.py:
+	 Some modification of log messages.
+
 2006-02-23  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* glue.py:
 	 vCard bugfix: 'BDAY' must be of type 'YYYY-MM-DD' (thanks to Oleg Motienko).
