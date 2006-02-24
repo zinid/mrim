@@ -1,3 +1,7 @@
+2006-02-25  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* core.py:
+	 Login encoding and http exceptions fix.
+
 2006-02-24  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* glue.py:
 	 Some modification of log messages.

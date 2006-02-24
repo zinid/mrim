@@ -344,8 +344,11 @@ class Client(asyncore.dispatcher_with_send):
 		typ = p.getType()
 		if not (self._is_authorized or (typ in [MRIM_CS_HELLO, MRIM_CS_LOGIN2])):
 			return p.getId()
-		self.log(logging.DEBUG, "Send %s packet (type=%s):\n%s" % 
-			(num_type[typ],hex(int(typ)), self.dump_packet(p)))
+		if typ!= MRIM_CS_PING:
+			self.log(logging.DEBUG, "Send %s packet (type=%s):\n%s" % 
+				(num_type[typ],hex(int(typ)), self.dump_packet(p)))
+		else:
+			self.log(logging.DEBUG, "Ping")
 		self.send(p.__str__())
 		self.last_ping_time = time.time()
 		self._traff_out += len(p.__str__())
@@ -370,10 +373,10 @@ class Client(asyncore.dispatcher_with_send):
 
 		self.log(logging.INFO, "Sending credentials")
 		d = {
-			'login':self.__login,
-			'password':self.__password,
+			'login':utils.str2win(self.__login),
+			'password':utils.str2win(self.__password),
 			'status':self.__status,
-			'user_agent':self.__agent
+			'user_agent':utils.str2win(self.__agent)
 		}
 		p = protocol.MMPPacket(typ=MRIM_CS_LOGIN2,dict=d)
 		self._send_packet(p)
@@ -447,8 +450,22 @@ class Client(asyncore.dispatcher_with_send):
 			buf = u.read()
 			self._traff_in += len(buf)
 			avatara = buf
-		except urllib2.HTTPError:
-			pass
+		except urllib2.HTTPError, e:
+			http_err = "Can't connect to http://avt.foto.mail.ru (%s)" % e
+			self.log(logging.ERROR, http_err)
+		except urllib2.URLError, e:
+			if hasattr(e.reason, 'args') and len(e.reason.args)==2:
+				http_err = "Can't connect to http://avt.foto.mail.ru (%s)" % e.reason.args[1]
+			else:
+				http_err = "Can't connect to http://avt.foto.mail.ru (%s)" % e.reason
+			self.log(logging.ERROR, http_err)
+		except socket.error, e:
+			if len(e.args)>1:
+				err_txt = e.args[1]
+			else:
+				err_txt = e.args[0]
+			http_err = "Can't connect to http://avt.foto.mail.ru (%s)" % err_txt
+			self.log(logging.ERROR, http_err)
 		except:
 			traceback.print_exc()
 		ackf(avatara, content_type, album, **acka)
