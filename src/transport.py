@@ -725,6 +725,8 @@ class XMPPTransport:
 			e.setTagData('error', text)
 			e.getTag('error').setTagData('text', text)
 			e.getTag('error').getTag('text').setAttr('xml:lang','ru-RU')
+		else:
+			e.getTag('error').delChild('text')
 		self.conn.send(e)
 
 	def send_probe(self, jid):
