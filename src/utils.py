@@ -10,10 +10,45 @@ import datetime
 import time
 import socket
 from mmptypes import *
+import re
 
 conf = config.Config()
-
 ENCODING = 'utf-8'
+mail_pattern = re.compile(
+	'[a-zA-Z0-9][a-zA-Z0-9_.-]{0,15}@(mail\.ru|inbox\.ru|bk\.ru|list\.ru|corp\.mail\.ru)$'
+)
+password_pattern = re.compile('[\040-\176]{4,}$')
+
+try:
+
+	import xml.dom.ext
+	import xml.dom.minidom
+	import cStringIO
+
+	def pretty_xml(xml_string):
+		io_string = cStringIO.StringIO()
+		xml_string = '<stanza>'+xml_string+'</stanza>'
+		xml.dom.ext.PrettyPrint(
+			root = xml.dom.minidom.parseString(xml_string),
+			stream = io_string,
+			indent = '    '
+		)
+		io_string.seek(0)
+		res = []
+		for x in io_string.readlines()[2:-1]:
+			if x.startswith('    '):
+				res.append(x[4:])
+			else:
+				res.append(x)
+		sum = ''
+		for i in res:
+			sum += i
+		return sum.strip('\n')
+
+except:
+
+	def pretty_xml(xml_string):
+		return xml_string
 
 def start_daemon(func, variables, thread_name=''):
 	if thread_name:
@@ -25,6 +60,18 @@ def start_daemon(func, variables, thread_name=''):
 	daemon_name = daemon.getName()
 	#if daemon_name != 'asyncore_loop':
 	#	print "Thread %s has started" % daemon_name
+
+def is_valid_email(mail):
+	if mail_pattern.match(mail):
+		return True
+	else:
+		return False
+
+def is_valid_password(password):
+	if password_pattern.match(password):
+		return True
+	else:
+		return False
 
 def dump_packet(p):
 	print "--- Begin of dump ---"

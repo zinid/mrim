@@ -321,10 +321,20 @@ class MMPConnection(core.Client):
 		self.send_stanza(msg, self.jid)
 
 	def add_contact(self, mail):
-		self.mmp_add_contact_with_search(mail, ackf=self.add_contact_result, acka={'mail':mail})
+		if utils.is_valid_email(mail):
+			self.mmp_add_contact_with_search(mail, ackf=self.add_contact_result,
+				acka={'mail':mail})
+		else:
+			reject = xmpp.Message(frm=utils.mail2jid(mail),to=self.jid)
+			reject.setSubject('Ошибка добавления пользователя')
+			reject.setBody(' ')
+			err = xmpp.ERR_ITEM_NOT_FOUND
+			error_reason = 'Добавляемого пользователя не существует в системе'
+			self.xmpp_conn.send_error(reject,err,error_reason,reply=0)
 
 	def del_contact(self, mail):
-		self.mmp_del_contact(mail, ackf=self.del_contact_result, acka={'mail':mail})
+		if utils.is_valid_email(mail):
+			self.mmp_del_contact(mail, ackf=self.del_contact_result, acka={'mail':mail})
 
 	def add_contact_result(self, status, mail):
 		if status == CONTACT_OPER_SUCCESS:
@@ -397,7 +407,11 @@ class MMPConnection(core.Client):
 			self.mmp_handler_got_user_status(mail, status)
 
 	def send_message(self, mail_to, body, mess):
-		self.mmp_send_message(mail_to,body,ackf=self.got_message_status,acka={'msg':mess})
+		if utils.is_valid_email(mail_to):
+			self.mmp_send_message(mail_to,body,ackf=self.got_message_status,acka={'msg':mess})
+		else:
+			err_txt = 'Нет такого пользователя'
+			self.xmpp_conn.send_error(mess,xmpp.ERR_ITEM_NOT_FOUND,err_txt)
 
 	def got_message_status(self,status,msg):
 
@@ -434,19 +448,17 @@ class MMPConnection(core.Client):
 				self.send_stanza(repl_msg,msg.getFrom())
 
 	def get_vcard(self, mail, mess):
-		mail_list = mail.split('@')[:2]
-		if len(mail_list) == 2:
-			user,domain = mail_list
+		if utils.is_valid_email(mail):
+			user,domain = mail.split('@')
+			d = {
+				MRIM_CS_WP_REQUEST_PARAM_USER:user,
+				MRIM_CS_WP_REQUEST_PARAM_DOMAIN:domain
+			}
+			self.mmp_send_wp_request(d, ackf=self.got_vcard, acka={'mail':mail, 'msg':mess})
 		else:
 			err = xmpp.ERR_ITEM_NOT_FOUND
 			err_txt = 'Нет такого пользователя'
 			self.xmpp_conn.send_error(mess,err,err_txt)
-			return
-		d = {
-			MRIM_CS_WP_REQUEST_PARAM_USER:user,
-			MRIM_CS_WP_REQUEST_PARAM_DOMAIN:domain
-		}
-		self.mmp_send_wp_request(d, ackf=self.got_vcard, acka={'mail':mail, 'msg':mess})
 
 	def anketa2vcard(self, anketa, avatara, ava_typ, album):
 		attributes = {

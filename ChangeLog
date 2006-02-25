@@ -1,3 +1,7 @@
+2006-02-26  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* transport.py, glue.py, utils.py:
+	 Email/password format validation.
+
 2006-02-25  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* core.py:
 	 Login encoding and http exceptions fix.

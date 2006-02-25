@@ -264,8 +264,12 @@ class XMPPTransport:
 					text = i18n.NULL_PASSWORD
 					self.send_error(iq,error,text)
 					return
-				if '@' not in user:
-					text = i18n.INCORRECT_EMAIL
+				if not utils.is_valid_email(user):
+					text = i18n.UNACCEPTABLE_EMAIL
+					self.send_error(iq,error,text)
+					return
+				if not utils.is_valid_password(password):
+					text = i18n.UNACCEPTABLE_PASSWORD
 					self.send_error(iq,error,text)
 					return
 				mmp_conn = self.pool.get(jid_from)
