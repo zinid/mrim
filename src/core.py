@@ -451,8 +451,11 @@ class Client(asyncore.dispatcher_with_send):
 			self._traff_in += len(buf)
 			avatara = buf
 		except urllib2.HTTPError, e:
-			http_err = "Can't connect to http://avt.foto.mail.ru (%s)" % e
-			self.log(logging.ERROR, http_err)
+			if hasattr(e, 'code') and e.code == 404:
+				pass
+			else:
+				http_err = "Can't connect to http://avt.foto.mail.ru (%s)" % e
+				self.log(logging.ERROR, http_err)
 		except urllib2.URLError, e:
 			if hasattr(e.reason, 'args') and len(e.reason.args)==2:
 				http_err = "Can't connect to http://avt.foto.mail.ru (%s)" % e.reason.args[1]
