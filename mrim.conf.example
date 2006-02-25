@@ -22,3 +22,4 @@ logfile = /var/log/mrim/mrim.log
 loglevel = info
 # --- logger defaults ---
 # timestamp = %%d/%%m/%%y-%%H:%%M:%%S
+
