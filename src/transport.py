@@ -767,7 +767,14 @@ class XMPPTransport:
 				ping_period = connection.ping_period
 				last_ping_time = connection.last_ping_time
 				if (time.time() - last_ping_time) > (ping_period - sleep_secs):
-					connection.ping()
+					try:
+						connection.ping()
+					except socket.error, e:
+						if len(e.args)>1:
+							err_txt = e.args[1]
+						else:
+							err_txt = e.args[0]
+							self.logger.error('Pinger error: %s' % err_txt)
 			time.sleep(sleep_secs)
 
 	def composing(self):
