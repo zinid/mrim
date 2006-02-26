@@ -2,7 +2,8 @@
 
 NULL_EMAIL = "Не указан электронный адрес"
 NULL_PASSWORD = "Не указан пароль"
-INCORRECT_EMAIL = "Вы должны указать электронный адрес, например user@mail.ru"
+UNACCEPTABLE_EMAIL = "Неверный формат электронного адреса"
+UNACCEPTABLE_PASSWORD = "Неверный формат пароля"
 ENTER_EMAIL = "Введите e-mail пользователя"
 ENTER_EMAIL_AND_PASSWORD = "Введите e-mail и пароль."
 NOT_CONNECTED = "Вы не подключены к сети Mail.ru IM"
