@@ -18,6 +18,9 @@ mail_pattern = re.compile(
 	'[a-zA-Z0-9][a-zA-Z0-9_.-]{0,15}@(mail\.ru|inbox\.ru|bk\.ru|list\.ru|corp\.mail\.ru)$'
 )
 password_pattern = re.compile('[\040-\176]{4,}$')
+invalid_chars = re.compile(
+	'[\000-\011\013\014\016-\037\202\204-\207\210\211\213\221-\227\230\231\233\271]'
+)
 
 try:
 
@@ -92,7 +95,8 @@ def str2win(s):
 	return r
 
 def win2str(s):
-	u_s = unicode(s, 'cp1251')
+	t = invalid_chars.sub(' ',s)
+	u_s = unicode(t, 'cp1251')
 	#return unicode(u_s.encode(ENCODING, 'replace'),'utf-8')
 	return u_s.encode(ENCODING, 'replace')
 

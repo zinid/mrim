@@ -1,7 +1,10 @@
+2006-02-28  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* utils.py:
+	 cp1251 -> utf-8 encoding fix (removing characters which cannot be in xml stanzas).
+
 2006-02-26  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* transport.py, glue.py, utils.py:
 	 Email/password format validation.
-	 Pinger bugfix.
 
 2006-02-25  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* core.py:
