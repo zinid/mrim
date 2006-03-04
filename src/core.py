@@ -14,6 +14,7 @@ import urllib2
 import errno
 import logging
 import config
+import base64
 
 conf = config.Config()
 
@@ -336,7 +337,10 @@ class Client(asyncore.dispatcher_with_send):
 		elif ptype == MRIM_CS_MODIFY_CONTACT_ACK:
 			status = mmp_packet.getBodyAttr('status')
 			if status == CONTACT_OPER_SUCCESS:
-				self.contact_list.delUser(_ack['mail'])
+				try:
+					self.contact_list.delUser(_ack['mail'])
+				except KeyError:
+					pass
 			_ack['ackf'](status, **_ack['acka'])
 
 	def _send_packet(self, p):
@@ -560,7 +564,7 @@ class Client(asyncore.dispatcher_with_send):
 			'email': e_mail,
 			'name': enc_nick,
 			'UNKNOWN':0,
-			'text':' '
+			'text':base64.encodestring('\x02\x00\x00\x00\x01\x00\x00\x00 \x01\x00\x00\x00 ')
 		}
 		p = protocol.MMPPacket(typ=MRIM_CS_ADD_CONTACT,dict=d)
 		ret_id = self._send_packet(p)

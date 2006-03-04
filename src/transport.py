@@ -566,7 +566,7 @@ class XMPPTransport:
 			mmp_conn.del_contact(e_mail)
 
 	def presence_unsubscribed_handler(self, presence):
-		pass
+		self.presence_unsubscribe_handler(presence)
 
 	def presence_error_handler(self, presence):
 		pass

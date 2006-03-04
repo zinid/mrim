@@ -338,7 +338,7 @@ class MMPConnection(core.Client):
 
 	def add_contact_result(self, status, mail):
 		if status == CONTACT_OPER_SUCCESS:
-			self.mmp_send_subscribe(mail)
+			#self.mmp_send_subscribe(mail)
 			return
 		reject = xmpp.Message(frm=utils.mail2jid(mail),to=self.jid)
 		if status == CONTACT_OPER_ERROR:

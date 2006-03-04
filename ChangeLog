@@ -1,3 +1,7 @@
+2006-03-05  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/core.py, src/transport.py:
+	 Contact list modifying fix.
+
 2006-03-04  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/glue.py:
 	 Initial contact list syncronization fix.
