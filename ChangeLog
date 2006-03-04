@@ -1,7 +1,7 @@
 2006-03-04  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/glue.py:
 	 Initial contact list syncronization fix.
-	* src/utils.py, src/main.py:
+	* src/main.py:
 	 HTTP proxy support (for avatars requests).
 	 XML debug formatting.
 	* src/config.py, mrim.conf.example:
