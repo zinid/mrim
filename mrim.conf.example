@@ -12,6 +12,8 @@ password = secret
 # show_version = on
 # show_os = on
 # psyco = off
+# -- http proxy for avatars (default is none) --
+# http_proxy = http://localhost:3128
 
 [profile]
 type = xml
@@ -22,4 +24,4 @@ logfile = /var/log/mrim/mrim.log
 loglevel = info
 # --- logger defaults ---
 # timestamp = %%d/%%m/%%y-%%H:%%M:%%S
-
+# xml_formatting = off

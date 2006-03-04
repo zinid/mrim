@@ -11,8 +11,14 @@ import utils
 import logging
 import xmpp
 import os
+import re
 
 conf = config.Config()
+
+if conf.http_proxy:
+	proxy = urllib2.ProxyHandler({"http" : conf.http_proxy})
+	opener = urllib2.build_opener(proxy)
+	urllib2.install_opener(opener)
 
 def logger_init():
 	formatter = logging.Formatter('%(asctime)s %(message)s', conf.timestamp)
@@ -42,6 +48,8 @@ logger = logger_init()
 class xmpppy_debug:
 	def __init__(self, *args, **kwargs):
 		self.debug_flags = []
+		if (logger.level != logging.DEBUG) or (not conf.xml_formatting):
+			utils.pretty_xml = lambda x: x
 	def show(self, *args, **kwargs):
 		pass
 	def is_active(self, flag):
@@ -53,9 +61,13 @@ class xmpppy_debug:
 		s = args[1]
 		action = args[2]
 		if action in ['got','sent']:
-			log_string = '[%s/%s] %s stanza:\n%s' % (typ,action,action,s)
+			try:
+				xml_s = utils.pretty_xml(s)
+			except:
+				xml_s = s
+			log_string = '[%s/%s] %s stanza(s):\n%s' % (typ,action,action,xml_s)
 			logger.debug(log_string)
-		elif typ != 'nodebuilder':
+		elif typ not in ['nodebuilder','dispatcher']:
 			logger.debug('[%s/%s] %s' % (typ,action,s))
 
 xmpp.debug.Debug = xmpppy_debug

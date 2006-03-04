@@ -190,8 +190,8 @@ class MMPConnection(core.Client):
 	def mmp_handler_got_contact_list2(self):
 
 		for e_mail in self.contact_list.getEmails():
-			if self.contact_list.getAuthFlag(e_mail):
-				continue
+			#if self.contact_list.getAuthFlag(e_mail):
+			#	continue
 			if not self.contact_list.getUserFlags(e_mail):
 				jid_from = utils.mail2jid(e_mail)
 				subscribe = xmpp.Presence(frm=jid_from,typ='subscribe')

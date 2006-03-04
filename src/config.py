@@ -6,7 +6,7 @@ import os
 import re
 
 PROGRAM = 'Mrim'
-VERSION = '0.1-svn-20060228'
+VERSION = '0.1-svn-20060304'
 DEFAULTS = {
 	'server':'localhost',
 	'disconame':'Mail.ru IM',
@@ -17,7 +17,9 @@ DEFAULTS = {
 	'show_os':'on',
 	'show_version':'on',
 	'psyco':'off',
-	'timestamp':'%%d/%%m/%%y-%%H:%%M:%%S'
+	'timestamp':'%%d/%%m/%%y-%%H:%%M:%%S',
+	'http_proxy': '',
+	'xml_formatting': 'off'
 }
 
 class Config:
@@ -73,6 +75,8 @@ class Config:
 		self.logfile = config.get('logger','logfile')
 		self.loglevel = config.get('logger', 'loglevel')
 		self.timestamp = config.get('logger', 'timestamp')
+		self.http_proxy = config.get('main', 'http_proxy')
+		self.xml_formatting = config.getboolean('logger', 'xml_formatting')
 
 	def get_os(self):
 		v = [str(x) for x in sys.version_info[:3]]

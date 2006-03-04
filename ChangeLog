@@ -1,74 +1,84 @@
+2006-03-04  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/glue.py:
+	 Initial contact list syncronization fix.
+	* src/utils.py, src/main.py:
+	 HTTP proxy support (for avatars requests).
+	 XML debug formatting.
+	* src/config.py, mrim.conf.example:
+	 Added option 'http_proxy' to section [main].
+	 Added option 'xml_formatting' to section [logger].
+
 2006-02-28  Evgeniy Khramtsov  <xramtsov@gmail.com>
-	* utils.py:
+	* src/utils.py:
 	 cp1251 -> utf-8 encoding fix (removing characters which cannot be in xml stanzas).
 
 2006-02-26  Evgeniy Khramtsov  <xramtsov@gmail.com>
-	* transport.py, glue.py, utils.py:
+	* src/transport.py, src/glue.py, src/utils.py:
 	 Email/password format validation.
 
 2006-02-25  Evgeniy Khramtsov  <xramtsov@gmail.com>
-	* core.py:
+	* src/core.py:
 	 Login encoding and http exceptions fix.
 
 2006-02-24  Evgeniy Khramtsov  <xramtsov@gmail.com>
-	* glue.py:
+	* src/glue.py:
 	 Some modification of log messages.
 
 2006-02-23  Evgeniy Khramtsov  <xramtsov@gmail.com>
-	* glue.py:
+	* src/glue.py:
 	 vCard bugfix: 'BDAY' must be of type 'YYYY-MM-DD' (thanks to Oleg Motienko).
 	 Contact list synchronization fix.
 
 2006-02-21  Evgeniy Khramtsov  <xramtsov@gmail.com>
-	* core.py, glue.py, main.py, transport.py:
+	* src/core.py, src/glue.py, src/main.py, src/transport.py:
 	 Using python logging module for core.Client and xmpppy debug.
-	* config.py, mrim.conf:
+	* src/config.py, mrim.conf.example:
 	 Added section [logger].
 	 Added 'loglevel','logfile' and 'timestamp' options to section [logger].
 
 2006-02-20  Evgeniy Khramtsov  <xramtsov@gmail.com>
-	* core.py:
+	* src/core.py:
 	 Using callback instead of thread in mmp_get_mbox_key().
 
 2006-02-17  Evgeniy Khramtsov  <xramtsov@gmail.com>
-	* transport.py:
+	* src/transport.py:
 	 Added graceful human-readable notification for users of jabber clients w/o
 	 proper registration forms support to upgrade their software (thanks to Igor Yermakov).
-	* glue.py:
+	* src/glue.py:
 	 Adding connection to pool after core.Client.__init__().
 
 2006-02-15  Evgeniy Khramtsov  <xramtsov@gmail.com>
-	* protocol.py, glue.py, transport.py, core.py:
+	* src/protocol.py, src/glue.py, src/transport.py, src/core.py:
 	 64-bit platform fix (thanks to Maxim Ryazanov).
 	 Disco#items shows legacy accounts.
 	 vCard date parsing fix (Python 2.4 issue).
 	 Small fix of initializing legacy connections.
 
 2006-02-13  Evgeniy Khramtsov  <xramtsov@gmail.com>
-	* glue.py:
+	* src/glue.py:
 	 Rosterx has been removed.
 
 2006-02-06  Evgeniy Khramtsov  <xramtsov@gmail.com>
-	* protocol.py, core.py:
+	* src/protocol.py, src/core.py:
 	 New "MRIM_CS_*_CONTACT" packets parsing.
 
 2006-02-03  Evgeniy Khramtsov  <xramtsov@gmail.com>
-	* mmptypes.py, protocol.py, core.py, glue.py:
+	* src/mmptypes.py, src/protocol.py, src/core.py, src/glue.py:
 	 MMP v1.9 support with new mail notifications.
-	* utils.py:
+	* src/utils.py:
 	 Small unicode fix.
 
 2006-01-30  Evgeniy Khramtsov  <xramtsov@gmail.com>
-	* main.py, config.py:
+	* src/main.py, src/config.py:
 	 Optional Psyco (http://psyco.sf.net) support for speed up.
 	 Added "psyco" option.
 
 2006-01-25  Evgeniy Khramtsov  <xramtsov@gmail.com>
 
-	* config.py:
+	* src/config.py:
 	 Added "admins" option in section "main".
 	 Added default values.
-	* transport.py:
+	* src/transport.py:
 	 Only admins can see disco#items/online.
 
 2006-01-15  Evgeniy Khramtsov  <xramtsov@gmail.com>
