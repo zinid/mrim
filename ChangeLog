@@ -1,3 +1,8 @@
+2006-03-07  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/core.py:
+	 Mail.ru server workaround: don't accept status from users which not in clist.
+	 Small fixes.
+
 2006-03-05  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/core.py, src/transport.py:
 	 Contact list modifying fix (thanks to MooSE Bulvinkl).

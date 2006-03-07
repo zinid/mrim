@@ -261,11 +261,17 @@ class Client(asyncore.dispatcher_with_send):
 			if self._got_roster:
 				status = mmp_packet.getBodyAttr('status')
 				e_mail = mmp_packet.getBodyAttr('user')
-				self.contact_list.setUserStatus(e_mail, status)
+				try:
+					self.contact_list.setUserStatus(e_mail, status)
+				except KeyError:
+					self.log(logging.ERROR,
+						"Got status from unknown user. There is no %s in contact list: %s" 
+							% (e_mail, self.contact_list.getEmails()))
+					return
 				self.mmp_handler_got_user_status(e_mail, status)
 
 		elif ptype == MRIM_CS_LOGOUT:
-			log_reason = "Server force logout with reason: "
+			log_reason = "Server has forced logout with reason: "
 			reason = mmp_packet.getBodyAttr('reason')
 			if reason == LOGOUT_NO_RELOGIN_FLAG:
 				log_reason += "dual login"
@@ -353,7 +359,14 @@ class Client(asyncore.dispatcher_with_send):
 				(num_type[typ],hex(int(typ)), self.dump_packet(p)))
 		else:
 			self.log(logging.DEBUG, "Ping")
-		self.send(p.__str__())
+		try:
+			self.send(p.__str__())
+		except socket.error, e:
+			if len(e.args)>1:
+				err_txt = e.args[1]
+			else:
+				err_txt = e.args[0]
+			self.log(logging.ERROR, "Socket error has raised while sending data: %s" % err_txt)
 		self.last_ping_time = time.time()
 		self._traff_out += len(p.__str__())
 		return p.getId()
