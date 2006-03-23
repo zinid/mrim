@@ -13,10 +13,10 @@ import signal
 import urllib2
 import errno
 import logging
-import config
+import mrim
 import base64
 
-conf = config.Config()
+conf = mrim.conf
 
 packet_types = [locals()[key] for key in locals().keys() if key.startswith('MRIM_CS')]
 

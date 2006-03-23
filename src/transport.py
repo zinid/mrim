@@ -6,7 +6,7 @@ import profile
 import core
 import glue
 import pool
-import config
+import mrim
 import forms
 import i18n
 import traceback
@@ -23,7 +23,7 @@ xmpp.NS_GATEWAY = 'jabber:iq:gateway'
 xmpp.NS_STATS = 'http://jabber.org/protocol/stats'
 xmpp.NS_ROSTERX = 'http://jabber.org/protocol/rosterx'
 
-conf = config.Config()
+conf = mrim.conf
 
 class XMPPTransport:
 
@@ -751,7 +751,7 @@ class XMPPTransport:
 			self.conn.send(probe)
 
 	def asyncore_loop(self):
-		asyncore.loop(1)
+		asyncore.loop(1, use_poll=True)
 
 	def asyncore_watcher(self):
 		while not self.full_stop.isSet():

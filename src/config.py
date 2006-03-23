@@ -4,9 +4,10 @@ import exceptions
 import traceback
 import os
 import re
+import logging
 
 PROGRAM = 'Mrim'
-VERSION = '0.1-svn-20060307'
+VERSION = '0.1-svn-20060324'
 DEFAULTS = {
 	'server':'localhost',
 	'disconame':'Mail.ru IM',
@@ -24,9 +25,9 @@ DEFAULTS = {
 
 class Config:
 
-	def __init__(self):
+	def __init__(self, config_file):
 
-		self.config_file = '../mrim.conf'
+		self.config_file = config_file
 		try:
 			self.parse()
 		except IOError, e:
@@ -49,7 +50,7 @@ class Config:
 		self.disconame = config.get('main', 'disconame')
 		self.server = config.get('main', 'server')
 		self.port = config.getint('main', 'port')
-		self.passwd = config.get('main', 'password')
+		self.passwd = config.get('main', 'password', raw=True)
 		self.psyco = config.getboolean('main', 'psyco')
 		admins = config.get('main', 'admins')
 		self.admins = re.split(' *, *',admins)

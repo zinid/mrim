@@ -1,3 +1,12 @@
+2006-03-24  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/mrim.py, src/init.py:
+	 Added daemonize and logging-to-file support.
+	 Added command line options: -c and -d.
+	* src/transport.py:
+	 Using poll() instead of select() in asyncore module.
+	* mrim.sh:
+	 New startup support. See `mrim.sh -h` output for more information.
+
 2006-03-07  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/core.py:
 	 Mail.ru server workaround: don't accept status from users which not in clist.

@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 
-import config
 import utils
 import xmpp
 import os
 import threading
 import traceback
 import time
+import mrim
 
-conf = config.Config()
+conf = mrim.conf
 
 class Profile:
 

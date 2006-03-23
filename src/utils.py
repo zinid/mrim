@@ -4,15 +4,15 @@ import sys
 import types
 import os
 import xmpp
-import config
 import struct
 import datetime
 import time
 import socket
 from mmptypes import *
 import re
+import mrim
 
-conf = config.Config()
+conf = mrim.conf
 ENCODING = 'utf-8'
 mail_pattern = re.compile(
 	'[a-zA-Z0-9][a-zA-Z0-9_.-]{0,15}@(mail\.ru|inbox\.ru|bk\.ru|list\.ru|corp\.mail\.ru)$'

@@ -1,4 +1,3 @@
 #!/bin/bash
 
-cd src
-./main.py
+./src/mrim.py $*

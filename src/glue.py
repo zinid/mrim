@@ -3,7 +3,6 @@ import core
 from mmptypes import *
 import xmpp
 import asyncore
-import config
 import i18n
 import traceback
 import profile
@@ -16,9 +15,9 @@ import locale
 import random
 import socket
 import logging
+import mrim
 
-conf = config.Config()
-locale.setlocale(locale.LC_ALL, 'ru_RU.UTF-8')
+conf = mrim.conf
 
 class MMPConnection(core.Client):
 
