@@ -1,28 +1,58 @@
-#!/usr/bin/env python
-
-import transport
-import config
+import mrim
 import signal
 import urllib2
 import time
 import sys
 import traceback
-import utils
 import logging
-import xmpp
 import os
 import re
 
-conf = config.Config()
+conf = mrim.conf
 
 if conf.http_proxy:
 	proxy = urllib2.ProxyHandler({"http" : conf.http_proxy})
 	opener = urllib2.build_opener(proxy)
 	urllib2.install_opener(opener)
 
+class LogFile:
+	def __init__(self):
+		self.f = open(conf.logfile, 'a+')
+	def write(self, s):
+		self.f.write(s)
+	def flush(self):
+		self.f.flush()
+
+def daemonize():
+	try:
+		pid = os.fork()
+	except OSError, e:
+		print >>sys.stderr, "fork #1 failed: %d (%s)" % (e.errno, e.strerror)
+		sys.exit(1)
+	if (pid == 0):
+		os.setsid()
+		signal.signal(signal.SIGHUP, signal.SIG_IGN)
+		try:
+			pid = os.fork()
+		except OSError, e:
+			print >>sys.stderr, "fork #2 failed: %d (%s)" % (e.errno, e.strerror)
+			sys.exit(1)
+		if (pid == 0):
+			os.chdir("/")
+			os.umask(0)
+		else:
+			os._exit(0)
+	else:
+		os._exit(0)
+	return(0)
+	sys.exit(0)
+
+if conf.daemon:
+	daemonize()
+	sys.stdout = sys.stderr = LogFile()
+
 def logger_init():
 	formatter = logging.Formatter('%(asctime)s %(message)s', conf.timestamp)
-	#log_file_handler = logging.FileHandler(conf.logfile)
 	log_file_handler = logging.StreamHandler()
 	log_file_handler.setFormatter(formatter)
 	logger = logging.getLogger('mrim')
@@ -44,6 +74,10 @@ def logger_init():
 	return logger
 
 logger = logger_init()
+
+import xmpp
+import transport
+import utils
 
 class xmpppy_debug:
 	def __init__(self, *args, **kwargs):
@@ -72,40 +106,7 @@ class xmpppy_debug:
 
 xmpp.debug.Debug = xmpppy_debug
 
-class LogFile:
-	def __init__(self, f):
-		self.f = f
-	def write(self, s):
-		self.f.write(s)
-		self.f.flush()
-	def flush(self):
-		self.f.flush()
-
-def daemonize():
-	try:
-		pid = os.fork()
-	except OSError, e:
-		print >>sys.stderr, "fork #1 failed: %d (%s)" % (e.errno, e.strerror)
-		sys.exit(1)
-	if (pid == 0):
-		os.setsid()
-		signal.signal(signal.SIGHUP, signal.SIG_IGN)
-		try:
-			pid = os.fork()
-		except OSError, e:
-			print >>sys.stderr, "fork #2 failed: %d (%s)" % (e.errno, e.strerror)
-			sys.exit(1)
-		if (pid == 0):
-			os.chdir("/")
-			os.umask(0)
-		else:
-			os._exit(0)
-	else:
-		os._exit(0)
-	return(0)
-	sys.exit(0)
-
-def main():
+def start():
 	if conf.psyco:
 		try:
 			import psyco
@@ -136,8 +137,3 @@ def main():
 				traceback.print_exc()
 				pass
 			time.sleep(5)
-
-if __name__ == "__main__":
-	#daemonize()
-	#sys.stdout = sys.stderr = LogFile(open(conf.logfile, 'a+'))
-	main()
