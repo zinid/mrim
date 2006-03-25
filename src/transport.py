@@ -588,11 +588,16 @@ class XMPPTransport:
 				txt = i18n.NOT_CONNECTED
 				self.send_error(message, err, txt)
 		elif body:
-			mmp_conn.send_message(mail_to,body,message)
-			try:
-				mmp_conn.typing_users.pop(mail_to)
-			except KeyError:
-				pass
+			if len(body)<=65536:
+				mmp_conn.send_message(mail_to,body,message)
+				try:
+					mmp_conn.typing_users.pop(mail_to)
+				except KeyError:
+					pass
+			else:
+				err = xmpp.ERR_NOT_ACCEPTABLE
+				txt = i18n.MESSAGE_TOO_BIG
+				self.send_error(message, err, txt)
 
 		elif x and x.getNamespace()=='jabber:x:event':
 			if x.getTag('composing') and x.getTag('id'):

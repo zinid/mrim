@@ -1,3 +1,7 @@
+2006-03-25  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/transport.py:
+	 Added check for message size (message size must not exceed 64kb).
+
 2006-03-24  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/mrim.py, src/init.py:
 	 Added daemonize and logging-to-file support.
