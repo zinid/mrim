@@ -568,7 +568,7 @@ class XMPPTransport:
 			self.send_error(iq,err,txt)
 			return
 		if typ=='set' and node=='mail':
-			if action=='execute':
+			if action=='execute' or not action:
 				response = xmpp.Node('command', attrs={
 					'xmlns':xmpp.NS_COMMANDS,
 					'sessionid':'mail:'+str(time.time()),
