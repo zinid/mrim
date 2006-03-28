@@ -163,9 +163,9 @@ def msk2utc(t):
 def gettime():
 	T = {}
 	if time.daylight:
-		T['tz'] = time.tzname[0]
-	else:
 		T['tz'] = time.tzname[1]
+	else:
+		T['tz'] = time.tzname[0]
 	T['utc'] = time.strftime('%Y%m%dT%H:%M:%S', time.gmtime())
 	T['display'] = time.asctime()
 	return T

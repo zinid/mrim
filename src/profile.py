@@ -10,6 +10,14 @@ import mrim
 
 conf = mrim.conf
 
+def is_registered(jid, spool=conf.profile_dir):
+	bare_jid = xmpp.JID(jid).getStripped()
+	file = os.path.join(spool, bare_jid+'.xdb')
+	if os.path.exists(file) and os.path.isfile(file):
+		return True
+	else:
+		return False
+
 class Profile:
 
 	def __init__(self, jid, spool=conf.profile_dir):
@@ -183,6 +191,62 @@ class Profile:
 		self.access.acquire()
 		try:
 			s = self.xdb.__str__(fancy=1).encode('utf-8', 'replace')
+		except:
+			traceback.print_exc()
+			return
+		fd = open(self.file, 'w')
+		fd.write('<?xml version="1.0" encoding="utf-8"?>\n')
+		fd.write(s)
+		fd.close()
+		self.access.release()
+
+class Options:
+
+	def __init__(self, jid, spool=conf.profile_dir):
+		self.access = threading.Semaphore()
+		self.spool = spool
+		self.jid = xmpp.JID(jid).getStripped()
+		self.file = os.path.join(self.spool, self.jid+'.cfg')
+
+		if os.path.exists(self.file):
+			self.access.acquire()
+			fd = open(self.file)
+			self.cfg = xmpp.Node(node=fd.read())
+			fd.close()
+			self.access.release()
+		else:
+			self.cfg = xmpp.Node('options')
+
+	def getItem(self, item):
+		return self.cfg.getTagData(item)
+
+	def setItem(self, item, value):
+		self.cfg.setTagData(item, value)
+		self.flush()
+
+	def getNewMail(self):
+		return self.getItem('new_mail') or '1'
+
+	def setNewMail(self, value):
+		self.setItem('new_mail', value)
+
+	def getMboxStatus(self):
+		return self.getItem('mbox_status') or '1'
+
+	def setMboxStatus(self, value):
+		self.setItem('mbox_status', value)
+
+	def remove(self):
+		try:
+			os.unlink(self.file)
+		except:
+			pass
+		return True
+
+	def flush(self):
+		self.access.acquire()
+		try:
+			s = self.cfg.__str__(fancy=1).encode('utf-8', 'replace')
 		except:
 			traceback.print_exc()
 			return

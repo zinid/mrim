@@ -270,7 +270,7 @@ class MMPConnection(core.Client):
 		self.send_stanza(composing, self.jid)
 
 	def mmp_handler_got_mbox_status(self, url, total, unread):
-		if not unread:
+		if not unread or profile.Options(self.jid).getMboxStatus()!='1':
 			return
 		body = "Непрочитанных писем: %s\nВсего писем: %s" % (unread, total)
 		subject = "У вас есть непрочитанные письма"
@@ -288,6 +288,8 @@ class MMPConnection(core.Client):
 		#	self.mail_number = number
 		#	return
 		#self.mail_number = number
+		if profile.Options(self.jid).getNewMail()!='1':
+			return
 		ltime = time.strftime('%c', time.localtime(unix_time))
 		xmpp_subject = "Вам пришло новое почтовое сообщение"
 		body = "Отправитель: %s\n" % sender

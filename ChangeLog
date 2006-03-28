@@ -1,3 +1,9 @@
+2006-03-28  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/transport.py, src/profile.py, src/glue.py, README:
+	 Ad-Hoc Commands support (JEP-0050).
+	* src/utils.py:
+	 TZ bugfix in gettime().
+
 2006-03-25  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/transport.py:
 	 Added check for message size (message size must not exceed 64kb).

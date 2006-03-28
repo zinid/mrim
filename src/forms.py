@@ -125,6 +125,28 @@ class SearchForm:
 	def create(self):
 		return self.xform
 
+class Command:
+
+	def __init__(self, notify1, notify2):
+		xform = xmpp.protocol.DataForm(typ='form', title=i18n.COMMAND)
+		instr = i18n.COMMAND_INSTRUCTION
+		xform.setInstructions(instr)
+
+		mbox_status = xform.setField('mbox_status')
+		mbox_status.setAttr('type', 'boolean')
+		mbox_status.setAttr('label', i18n.MAILBOX_STATUS)
+		mbox_status.setTagData('value', notify1)
+
+		notify_new_mail = xform.setField('new_mail')
+		notify_new_mail.setAttr('type', 'boolean')
+		notify_new_mail.setAttr('label', i18n.NOTIFY_NEW_MAIL)
+		notify_new_mail.setTagData('value', notify2)
+
+		self.xform = xform
+
+	def create(self):
+		return self.xform
+
 class DiscoFeatures:
 
 	def __init__(self, ids, features):
