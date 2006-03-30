@@ -271,7 +271,6 @@ def pack_rtf(s):
 	io_s = cStringIO.StringIO()
 	io_s.write(struct.pack('I', 2))
 	text = RTF_H+enc+RTF_T
-	print text.__repr__()
 	io_s.write(struct.pack('I',len(text)))
 	io_s.write(text)
 	io_s.write(struct.pack('I', 4))
