@@ -1,3 +1,7 @@
+2006-03-30  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/transport.py:
+	 Bugfix.
+
 2006-03-29  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/transport.py:
 	 ad-hoc commands bugfix.

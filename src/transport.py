@@ -568,7 +568,7 @@ class XMPPTransport:
 			self.send_error(iq,err,txt)
 			return
 		if typ=='set' and node=='mail':
-			if action=='execute' or not action:
+			if action=='execute' or (not action and not sessionid):
 				response = xmpp.Node('command', attrs={
 					'xmlns':xmpp.NS_COMMANDS,
 					'sessionid':'mail:'+str(time.time()),
@@ -582,7 +582,7 @@ class XMPPTransport:
 				reply = iq.buildReply(typ='result')
 				reply.setPayload([response])
 				self.conn.send(reply)
-			elif action=='complete':
+			elif action=='complete' or (not action and sessionid):
 				response = xmpp.Node('command', attrs={
 					'xmlns':xmpp.NS_COMMANDS,
 					'sessionid':sessionid,
