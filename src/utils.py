@@ -11,6 +11,9 @@ import socket
 from mmptypes import *
 import re
 import mrim
+import zlib
+import base64
+import cStringIO
 
 conf = mrim.conf
 ENCODING = 'utf-8'
@@ -21,6 +24,36 @@ password_pattern = re.compile('[\040-\176]{4,}$')
 invalid_chars = re.compile(
 	'[\000-\011\013\014\016-\037\202\204-\207\210\211\213\221-\227\230\231\233\271]'
 )
+RTF_H = '{\\rtf1\\ansi\\ansicpg1251\\deff0\\deflang1049{\\fonttbl{\\f0\\fnil\\fcharset204 Tahoma;}}\r\n{\\colortbl ;\\red0\\green0\\blue0;}\r\n\\viewkind4\\uc1\\pard\\cf1\\f0\\fs18 '
+RTF_T = '\\par\r\n}\r\n'
+
+INTRANSTBL = [chr(i) for i in range(0x0,0x09)+range(0x0b,0x0d)+range(0x7f,256)]
+OUTTRANSTBL = [hex(ord(i)).replace('0x',"\\'") for i in INTRANSTBL]
+INSYMS = ['\\','\r','\n','\t','{','}']
+OUTSYMS = ['\\\\','','\\par\r\n','\\tab','\\{','\\}']
+INSMILES = [
+	':)',';)',':-))',';-P','8-)','):-D','}:o)','$-)',
+	":-'",'):-(','8-(',":'(",":''()",'S:-o','(:-o','8-0',
+	'8-[o]','):-p',':-(','):-$',':-D',':-E',':devil:',':vampire:',
+	':-][',':-|','B-j',':~o','(_I_)',':heart:',':-*',':sleepy:',
+	':cool:',':viva:',':ok:',':yo:',':suxx:',':think:',':figu:',':kulak:',':fuck:'
+]
+OUTSMILES = [
+	'<###20###img010>','<###20###img011>','<###20###img012>','<###20###img013>',
+	'<###20###img014>','<###20###img030>','<###20###img016>','<###20###img017>',
+	'<###20###img018>','<###20###img028>','<###20###img020>','<###20###img021>',
+	'<###20###img022>','<###20###img023>','<###20###img024>','<###20###img025>',
+	'<###20###img026>','<###20###img027>','<###20###img019>','<###20###img029>',
+	'<###20###img015>','<###20###img031>','<###20###img032>','<###20###img033>',
+	'<###20###img034>','<###20###img035>','<###20###img036>','<###20###img037>',
+	'<###20###img038>','<###20###img039>','<###20###img040>','<###20###img041>',
+	'<###20###img000>','<###20###img001>','<###20###img002>','<###20###img003>',
+	'<###20###img005>','<###20###img006>','<###20###img007>','<###20###img008>',
+	'<###20###img009>'
+]
+
+INCHARS = tuple(INSYMS+INTRANSTBL+INSMILES)
+OUTCHARS = tuple(OUTSYMS+OUTTRANSTBL+OUTSMILES)
 
 try:
 
@@ -93,6 +126,15 @@ def str2win(s):
 	else:
 		raise TypeError('value %s is neither unicode nor string' % s)
 	return r
+
+def translate(s, t1, t2, index=0):
+	if index<len(t1):
+		return translate(s.replace(t1[index],t2[index]), t1, t2, index+1)
+	else:
+		return s
+
+def winrtf(s):
+	return translate(s, INCHARS, OUTCHARS)
 
 def win2str(s):
 	t = invalid_chars.sub(' ',s)
@@ -202,3 +244,38 @@ def status2show(status):
 	elif status != STATUS_ONLINE:
 		typ = 'unavailable'
 	return (typ,show)
+
+def unpack_rtf(s):
+	res = [s, ()]
+	try:
+		decoded = base64.decodestring(s)
+		unzipped = zlib.decompress(decoded)
+		body = cStringIO.StringIO(unzipped)
+		number = struct.unpack('I', body.read(4))[0]
+		text = body.read(struct.unpack('I', body.read(4))[0])
+		color = struct.unpack('I',
+			body.read(
+				struct.unpack('I', body.read(4))[0]
+			)
+		)[0]
+		R = color & 0xFF
+		G = (color & 0xFF00) >> 8
+		B = (color & 0xFF0000) >> 16
+		res = [text, (R,G,B)]
+	except:
+		pass
+	return res
+
+def pack_rtf(s):
+	enc = winrtf(s)
+	io_s = cStringIO.StringIO()
+	io_s.write(struct.pack('I', 2))
+	text = RTF_H+enc+RTF_T
+	print text.__repr__()
+	io_s.write(struct.pack('I',len(text)))
+	io_s.write(text)
+	io_s.write(struct.pack('I', 4))
+	io_s.write(struct.pack('I', 0x00ffffff))
+	io_s.seek(0)
+	gzipped = zlib.compress(io_s.read())
+	return base64.encodestring(gzipped).replace('\n','')

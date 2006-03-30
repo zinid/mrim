@@ -535,7 +535,8 @@ class Client(asyncore.dispatcher_with_send):
 	def mmp_send_message(self, to, body, ackf=None, acka={}):
 
 		enc_body = utils.str2win(body)
-		msg = protocol.Message(to,enc_body)
+		#msg = protocol.Message(to,enc_body)
+		msg = protocol.Message(to,enc_body,flags=[MESSAGE_FLAG_RTF])
 		ret_id = self._send_packet(msg)
 		if ackf:
 			self.ack_buf[ret_id] = {'ackf':ackf,'acka':acka}

@@ -478,7 +478,10 @@ class Message(MMPPacket):
 			d['flags'] = flags_sum & MESSAGE_USERFLAGS_MASK
 			d['to'] = to
 			d['message'] = body
-			d['rtf-message'] = ' '
+			if MESSAGE_FLAG_RTF in flags:
+				d['rtf-message'] = utils.pack_rtf(body)
+			else:
+				d['rtf-message'] = ' '
 			MMPPacket.__init__(self,typ=MRIM_CS_MESSAGE,dict=d)
 			self.setHeaderAttr('seq', utils.seq())
 		else:

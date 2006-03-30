@@ -1,3 +1,7 @@
+2006-03-31  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/protocol.py, src/core.py, src/utils.py:
+	 Initial RTF support (only for smile icons).
+
 2006-03-30  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/transport.py:
 	 Bugfix.
