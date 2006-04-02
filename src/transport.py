@@ -39,6 +39,7 @@ class XMPPTransport:
 		self.full_stop = threading.Event()
 		self.logger = logger
 		self.access_to_file = threading.Semaphore()
+		self.last_version_time = time.strftime('%Y%m%d-%H%M')
 		self.server_features = [
 			xmpp.NS_DISCO_INFO,
 			xmpp.NS_DISCO_ITEMS,
@@ -461,7 +462,7 @@ class XMPPTransport:
 			user = jid_from_stripped.encode('utf-8', 'replace')+'/'+resource
 			self.access_to_file.acquire()
 			fd = open(
-				os.path.join(conf.profile_dir,'version_stats'),'a+'
+				os.path.join(conf.profile_dir,'version_stats-'+self.last_version_time),'a+'
 			)
 			fd.write("%s\t%s\t%s\t%s\n" % (user, Name, Version, Os))
 			fd.close()
@@ -734,6 +735,7 @@ class XMPPTransport:
 					self.collect_versions()
 
 	def collect_versions(self):
+		self.last_version_time = time.strftime('%Y%m%d-%H%M')
 		version = xmpp.Iq(frm=conf.name,typ='get')
 		version.setTag('query',attrs={'xmlns':xmpp.NS_VERSION})
 		for J in self.pool.getJids():
