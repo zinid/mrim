@@ -38,6 +38,7 @@ class XMPPTransport:
 		self.zombie = Queue.Queue()
 		self.full_stop = threading.Event()
 		self.logger = logger
+		self.access_to_file = threading.Semaphore()
 		self.server_features = [
 			xmpp.NS_DISCO_INFO,
 			xmpp.NS_DISCO_ITEMS,
@@ -72,7 +73,6 @@ class XMPPTransport:
 		self.Features = forms.DiscoFeatures(self.server_ids,self.server_features).create()
 
 		utils.start_daemon(self.pinger, (), 'pinger')
-		#utils.start_daemon(self.billing, (), 'billing')
 		utils.start_daemon(self.composing, (), 'composing')
 		if conf.reconnect:
 			utils.start_daemon(self.reanimator, (), 'reanimator')
@@ -438,6 +438,8 @@ class XMPPTransport:
 	def iq_version_handler(self, iq):
 		jid_to = iq.getTo()
 		jid_to_stripped = jid_to.getStripped()
+		jid_from = iq.getFrom()
+		jid_from_stripped = jid_from.getStripped()
 		typ = iq.getType()
 		iq_children = iq.getQueryChildren()
 		if typ=='get' and (jid_to_stripped==self.name):
@@ -450,6 +452,20 @@ class XMPPTransport:
 				query.setTagData('version', conf.version)
 				query.setTagData('os', conf.os)
 				self.conn.send(repl)
+		elif typ=='result':
+			query = iq.getTag('query')
+			Name = query.getTagData('name') and query.getTagData('name').encode('utf-8', 'replace')
+			Version = query.getTagData('version') and query.getTagData('version').encode('utf-8', 'replace')
+			Os = query.getTagData('os') and query.getTagData('os').encode('utf-8', 'replace')
+			resource = jid_from.getResource().encode('utf-8', 'replace')
+			user = jid_from_stripped.encode('utf-8', 'replace')+'/'+resource
+			self.access_to_file.acquire()
+			fd = open(
+				os.path.join(conf.profile_dir,'version_stats'),'a+'
+			)
+			fd.write("%s\t%s\t%s\t%s\n" % (user, Name, Version, Os))
+			fd.close()
+			self.access_to_file.release()
 		else:
 			self.send_not_implemented(iq)
 
@@ -708,7 +724,24 @@ class XMPPTransport:
 		pass
 
 	def message_server_handler(self, message):
-		pass
+		jid_from = message.getFrom()
+		jid_from_stripped = jid_from.getStripped()
+		body = message.getBody()
+		if body:
+			command = body.strip()
+			if jid_from_stripped in conf.admins:
+				if command=='version':
+					self.collect_versions()
+
+	def collect_versions(self):
+		version = xmpp.Iq(frm=conf.name,typ='get')
+		version.setTag('query',attrs={'xmlns':xmpp.NS_VERSION})
+		for J in self.pool.getJids():
+			for resource in self.pool.getResources(J):
+				To = xmpp.JID(J)
+				To.setResource(resource)
+				version.setTo(To)
+				self.conn.send(version)
 
 	def message_user_handler(self, message):
 		jid_from = message.getFrom()
@@ -952,13 +985,6 @@ class XMPPTransport:
 					if (time.time()-t)>sleep_secs:
 						connection.mmp_send_typing_notify(u)
 			time.sleep(sleep_secs)
-
-	def billing(self):
-		while not self.full_stop.isSet():
-			time.sleep(5)
-			for i in self.pool.getJids():
-				print i.__str__(), ":", self.pool.resources[i]
-			print [tred.getName() for tred in threading.enumerate()]
 
 	def reanimator(self):
 		probe = xmpp.Presence(frm=conf.name,typ='probe')
