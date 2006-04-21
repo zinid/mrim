@@ -16,6 +16,7 @@ import random
 import socket
 import logging
 import mrim
+import forms
 
 conf = mrim.conf
 
@@ -206,12 +207,17 @@ class MMPConnection(core.Client):
 				self.send_stanza(p)
 
 	def mmp_handler_got_message(self, mess, offtime):
+		mail = utils.win2str(mess.getFrom())
 		body = mess.getBodyPayload()
-		jid_from = utils.mail2jid(mess.getFrom())
+		jid_from = utils.mail2jid(mail)
 		msg = xmpp.Message(frm=jid_from)
 		msg.setBody(body)
 		if mess.hasFlag(MESSAGE_FLAG_SYSTEM):
 			msg.setSubject(i18n.SYSTEM_NOFIFY)
+			msg.setFrom(conf.name)
+		elif mess.hasFlag(MESSAGE_FLAG_SMS_STATUS):
+			msg.setSubject(i18n.SMS_DELIVERY_STATUS + mail)
+			msg.setFrom(conf.name)
 		else:
 			msg.setType('chat')
 			xevent = xmpp.simplexml.Node('x', attrs={'xmlns':'jabber:x:event'})
@@ -222,6 +228,23 @@ class MMPConnection(core.Client):
 			delay = xmpp.Node('x', attrs={'xmlns':xmpp.NS_DELAY, 'from':conf.name})
 			delay.setAttr('stamp', stamp)
 			msg.addChild(node=delay)
+		self.send_stanza(msg, self.jid)
+
+	def mmp_handler_got_sms(self, number, users, text, offtime):
+		jids = [utils.mail2jid(u) for u in users]
+		msg = xmpp.Message(frm=conf.name)
+		msg.setSubject(i18n.INCOMING_SMS + number)
+		msg.setBody(text)
+		if offtime:
+			stamp = time.strftime('%Y%m%dT%H:%M:%S', offtime)
+			delay = xmpp.Node('x', attrs={'xmlns':xmpp.NS_DELAY, 'from':conf.name})
+			delay.setAttr('stamp', stamp)
+			msg.addChild(node=delay)
+		if not jids:
+			jid_from = conf.name
+		else:
+			jid_from = jids[0]
+		msg.setFrom(jid_from)
 		self.send_stanza(msg, self.jid)
 
 	def mmp_handler_got_subscribe(self, e_mail, txt, offtime):
@@ -552,90 +575,15 @@ class MMPConnection(core.Client):
 				error_text = 'Неизвестная ошибка'
 			self.xmpp_conn.send_error(mess,error_name,error_text)
 			return
-		xdf = self.anketa2search(anketa.getVCards())
+		xdf = forms.anketa2search(anketa.getVCards())
 		iq_form = xmpp.Iq(frm=conf.name,typ='result')
 		iq_form.setAttr('id', mess.getAttr('id'))
 		iq_form.setQueryNS(xmpp.NS_SEARCH)
 		iq_form.setQueryPayload([xdf])
 		self.send_stanza(iq_form, mess.getFrom())
 
-	def anketa2search(self, anketa):
-		xdf = xmpp.protocol.DataForm(typ='result')
-		f1 = xdf.setField("FORM_TYPE")
-		f1.setType("hidden")
-		f1.setTagData('value', xmpp.NS_SEARCH)
-		reported = xmpp.Node('reported')
-		items = []
-		a = (
-			'E-mail', 'Псевдоним', 'Имя',
-			'Фамилия', 'Пол', 'Возраст', 'Статус', 'JID'
-		)
-		fvals = (
-			'email', 'nick', 'firstname',
-			'lastname', 'sex', 'age', 'status', 'jid'
-		)
-		for k,v in zip(a,fvals):
-			if k != 'JID':
-				field = xmpp.Node('field', attrs={'type':'text-single', 'label':k, 'var':v})
-				reported.addChild(node=field)
-			else:
-				field = xmpp.Node('field', attrs={'type':'hidden', 'label':k, 'var':v})
-				reported.addChild(node=field)
-		xdf.addChild(node=reported)
-		for record in anketa:
-			item = xmpp.Node('item')
-			record_field = xmpp.Node('field', attrs={'var':'jid'})
-			record_field.setTagData('value',
-				utils.mail2jid(record['Username']+'@'+record['Domain']))
-			item.addChild(node=record_field)
-			for fval in fvals:
-				value = ''
-				try:
-					if fval == 'nick':
-						value = record['Nickname']
-					elif fval == 'email':
-						value = record['Username']+'@'+record['Domain']
-					elif fval == 'firstname':
-						value = record['FirstName']
-					elif fval == 'lastname':
-						value = record['LastName']
-					elif fval == 'sex':
-						r = record['Sex']
-						if r == '1':
-							value = 'М'
-						elif r == '2':
-							value = 'Ж'
-					elif fval == 'status':
-						s = eval('0x0'+record['mrim_status'])
-						if s == STATUS_OFFLINE:
-							value = 'Отключен'
-						elif s == STATUS_ONLINE:
-							value = 'Онлайн'
-						elif s == STATUS_AWAY:
-							value = 'Отошёл'
-						elif s == STATUS_FLAG_INVISIBLE:
-							value = 'Невидимый'
-						else:
-							value = 'Нет информации'
-					elif fval == 'age':
-						try:
-							bdate = [int(x) for x in record['Birthday'].split('-')]
-							nowdate = list(time.localtime())
-							age = nowdate[0] - bdate[0] - int(bdate[1:]>nowdate[1:])
-							value = age
-						except:
-							pass
-					elif fval == 'jid':
-						continue
-				except:
-					traceback.print_exc()
-				record_field = xmpp.Node('field',
-					attrs={'var':fval})
-				record_field.setTagData('value', value)
-				item.addChild(node=record_field)
-			items.append(item)
-		xdf.setPayload(items,add=1)
-		return xdf
+	def set_sms_phones(self, mail, numbers):
+		self.mmp_modify_sms(mail, numbers)
 
 	def uptime(self):
 		return utils.uptime(time.time() - self.starttime)

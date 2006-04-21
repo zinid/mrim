@@ -166,7 +166,7 @@ class MMPBody(UserDict.UserDict):
 			self['group_id'] = self._read_ul()
 			self['contact'] = self._read_lps()
 			self['name'] = self._read_lps()
-			self['UNKNOWN'] = self._read_ul()
+			self['phones'] = self._read_lps()
 		elif self.typ == MRIM_CS_MODIFY_CONTACT_ACK:
 			self['status'] = self._read_ul()
 		elif self.typ == MRIM_CS_OFFLINE_MESSAGE_ACK:
@@ -249,6 +249,12 @@ class MMPBody(UserDict.UserDict):
 			self['password'] = self._read_lps()
 			self['status'] = self._read_ul()
 			self['user_agent'] = self._read_lps()
+		elif self.typ == MRIM_CS_SMS:
+			self['UNKNOWN'] = self._read_ul()
+			self['number'] = self._read_lps()
+			self['text'] = self._read_lps()
+		elif self.typ == MRIM_CS_SMS_ACK:
+			self['status'] = self._read_ul()
 
 		elif self.typ == MRIM_CS_USER_INFO:
 			current_position = self.io.tell()
@@ -314,7 +320,7 @@ class MMPBody(UserDict.UserDict):
 			self._write_ul(dict['group_id'])
 			self._write_lps(dict['contact'])
 			self._write_lps(dict['name'])
-			self._write_ul(dict['UNKNOWN'])
+			self._write_lps(dict['phones'])
 		elif self.typ == MRIM_CS_MODIFY_CONTACT_ACK:
 			self._write_ul(dict['status'])
 		elif self.typ == MRIM_CS_OFFLINE_MESSAGE_ACK:
@@ -354,6 +360,10 @@ class MMPBody(UserDict.UserDict):
 			self._write_lps(dict['password'])
 			self._write_ul(dict['status'])
 			self._write_lps(dict['user_agent'])
+		elif self.typ == MRIM_CS_SMS:
+			self._write_ul(dict['UNKNOWN'])
+			self._write_lps(dict['number'])
+			self._write_lps(dict['text'])
 		self.io.seek(0)
 		return self.io.read()
 
@@ -588,7 +598,8 @@ class ContactList:
 				'group':u[1],
 				'nick':utils.win2str(u[3]),
 				'server_flags':u[4],
-				'status':u[5]
+				'status':u[5],
+				'phones':u[6]
 			}
 		return d
 
@@ -651,3 +662,13 @@ class ContactList:
 			if self.getUserGroup(u) == gid:
 				members.append(u)
 		return members
+
+	def getPhones(self, mail):
+		phones = self.users[mail]['phones']
+		if phones:
+			return phones.split(',')
+		else:
+			return []
+
+	def setPhones(self, mail, phones):
+		self.users[mail]['phones'] = ','.join(phones[:3])

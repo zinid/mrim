@@ -58,6 +58,12 @@ class XMPPTransport:
 			'type':'mrim',
 			'name':self.disconame
 		}
+		self.item_features = [
+			xmpp.NS_DISCO_INFO,
+			xmpp.NS_DISCO_ITEMS,
+			xmpp.NS_COMMANDS,
+			xmpp.NS_VCARD
+		]
 
 	def run(self):
 		self.conn.connect((self.server,self.port))
@@ -70,8 +76,8 @@ class XMPPTransport:
 		self.conn.RegisterHandler('presence', self.daemon_presence_handler)
 		self.conn.RegisterHandler('message', self.daemon_message_handler)
 
-		self.sform = forms.SearchForm().create()
-		self.Features = forms.DiscoFeatures(self.server_ids,self.server_features).create()
+		self.sform = forms.get_search_form()
+		self.Features = forms.get_disco_features(self.server_ids,self.server_features)
 
 		utils.start_daemon(self.pinger, (), 'pinger')
 		utils.start_daemon(self.composing, (), 'composing')
@@ -169,18 +175,19 @@ class XMPPTransport:
 			self.conn.send(reply)
 		elif jid_to_stripped==self.name and typ=='get' and node:
 			self.iq_disco_node_info_handler(iq, node)
-		elif jid_to_stripped==self.name and typ=='result':
-			rosterx_id = iq.getID()
-			mmp_conn = self.pool.get(jid_from)
-			if mmp_conn and mmp_conn._got_roster:
-				try:
-					mmp_conn.ids.pop(mmp_conn.ids.index(rosterx_id))
-				except (ValueError,IndexError):
-					return
-				iq_children = iq.getQueryChildren()
-				features = [c.getAttr('var') for c in iq_children if c.getName()=='feature']
-				if xmpp.NS_ROSTERX in features:
-					self.roster_exchange(jid_from)
+		elif utils.is_valid_email(utils.jid2mail(jid_to_stripped)) and typ=='get':
+			if node:
+				self.iq_disco_user_node_info_handler(iq, node)
+			else:
+				ids = {
+					'category':'client',
+					'type':'pc',
+					'name':utils.jid2mail(jid_to_stripped)
+				}
+				feats = forms.get_disco_features(ids, self.item_features)
+				reply = iq.buildReply(typ='result')
+				reply.setQueryPayload(feats)
+				self.conn.send(reply)
 		else:
 			self.send_not_implemented(iq)
 
@@ -189,6 +196,7 @@ class XMPPTransport:
 		jid_from_stripped = jid_from.getStripped()
 		jid_to = iq.getTo()
 		jid_to_stripped = jid_to.getStripped()
+		jid_to_node = jid_to.getNode()
 		typ = iq.getType()
 		node = iq.getTagAttr('query','node')
 		if jid_to_stripped==self.name and typ=='get' and node:
@@ -211,6 +219,19 @@ class XMPPTransport:
 			)
 			reply.getTag('query').addChild(node=command)
 			self.conn.send(reply)
+		elif utils.is_valid_email(utils.jid2mail(jid_to_stripped)) and typ=='get':
+			if node:
+				self.iq_disco_user_node_items_handler(iq, node)
+			else:
+				reply = iq.buildReply(typ='result')
+				command = xmpp.Node('item', attrs={
+						'jid':jid_to,
+						'name':'commands',
+						'node':xmpp.NS_COMMANDS
+					}
+				)
+				reply.getTag('query').addChild(node=command)
+				self.conn.send(reply)
 		else:
 			self.send_not_implemented(iq)
 
@@ -235,7 +256,7 @@ class XMPPTransport:
 				xmpp.NS_DISCO_ITEMS
 			]
 			reply = iq.buildReply(typ='result')
-			reply.setQueryPayload(forms.DiscoFeatures(ids,features).create())
+			reply.setQueryPayload(forms.get_disco_features(ids,features))
 			reply.setTagAttr('query','node','online')
 			self.conn.send(reply)
 		elif node==xmpp.NS_COMMANDS:
@@ -246,22 +267,64 @@ class XMPPTransport:
 			}
 			features = [xmpp.NS_COMMANDS]
 			reply = iq.buildReply(typ='result')
-			reply.setQueryPayload(forms.DiscoFeatures(ids,features).create())
+			reply.setQueryPayload(forms.get_disco_features(ids,features))
 			reply.setTagAttr('query','node',xmpp.NS_COMMANDS)
 			self.conn.send(reply)
-		elif node=='mail':
+		elif node in ['mail', 'sms']:
+			if node=='mail':
+				node_name = 'Mail Events'
+			elif node=='sms':
+				node_name = 'Send SMS'
 			ids = {
 				'category':'automation',
 				'type':'command-node',
-				'name':'Mail Events'
+				'name':node_name
 			}
 			features = [
 				xmpp.NS_COMMANDS,
 				xmpp.NS_DATA
 			]
 			reply = iq.buildReply(typ='result')
-			reply.setQueryPayload(forms.DiscoFeatures(ids,features).create())
-			reply.setTagAttr('query','node','mail')
+			reply.setQueryPayload(forms.get_disco_features(ids,features))
+			reply.setTagAttr('query','node',node)
+			self.conn.send(reply)
+		else:
+			self.send_not_implemented(iq)
+
+	def iq_disco_user_node_info_handler(self, iq, node):
+		jid_from = iq.getFrom()
+		jid_from_stripped = jid_from.getStripped()
+		jid_to = iq.getTo()
+		jid_to_stripped = jid_to.getStripped()
+		typ = iq.getType()
+		if node==xmpp.NS_COMMANDS:
+			ids = {
+				'category':'automation',
+				'type':'command-list',
+				'name':'User Commands'
+			}
+			features = [xmpp.NS_COMMANDS]
+			reply = iq.buildReply(typ='result')
+			reply.setQueryPayload(forms.get_disco_features(ids,features))
+			reply.setTagAttr('query','node',xmpp.NS_COMMANDS)
+			self.conn.send(reply)
+		elif node in ['conf_sms', 'send_sms']:
+			if node=='conf_sms':
+				node_name = 'Configure SMS'
+			elif node=='send_sms':
+				node_name = 'Send SMS'
+			ids = {
+				'category':'automation',
+				'type':'command-node',
+				'name':node_name
+			}
+			features = [
+				xmpp.NS_COMMANDS,
+				xmpp.NS_DATA
+			]
+			reply = iq.buildReply(typ='result')
+			reply.setQueryPayload(forms.get_disco_features(ids,features))
+			reply.setTagAttr('query','node',node)
 			self.conn.send(reply)
 		else:
 			self.send_not_implemented(iq)
@@ -293,19 +356,39 @@ class XMPPTransport:
 				reply.setQueryPayload([])
 			self.conn.send(reply)
 		elif node==xmpp.NS_COMMANDS:
-			item_attrs = {
-				'jid':self.name,
-				'node':'mail',
-				'name':'Configure Service'
-			}
-			item = xmpp.Node('item',attrs=item_attrs)
+			mail_attrs = {'jid':self.name,'node':'mail','name':'Mail Events'}
+			sms_attrs = {'jid':self.name,'node':'sms','name':'Send SMS'}
+			mail = xmpp.Node('item',attrs=mail_attrs)
+			sms = xmpp.Node('item',attrs=sms_attrs)
 			reply = iq.buildReply(typ='result')
 			reply.setTagAttr('query','node',xmpp.NS_COMMANDS)
-			reply.setQueryPayload([item])
+			reply.setQueryPayload([mail, sms])
 			self.conn.send(reply)
-		elif node=='mail':
+		elif node in ['mail', 'sms']:
 			reply = iq.buildReply(typ='result')
-			reply.setTagAttr('query','node','mail')
+			reply.setTagAttr('query','node',node)
+			self.conn.send(reply)
+		else:
+			self.send_not_implemented(iq)
+
+	def iq_disco_user_node_items_handler(self, iq, node):
+		jid_from = iq.getFrom()
+		jid_from_stripped = jid_from.getStripped()
+		jid_to = iq.getTo()
+		jid_to_stripped = jid_to.getStripped()
+		typ = iq.getType()
+		if node==xmpp.NS_COMMANDS:
+			mail_attrs = {'jid':jid_to,'node':'conf_sms','name':'Configure SMS'}
+			sms_attrs = {'jid':jid_to,'node':'send_sms','name':'Send SMS'}
+			mail = xmpp.Node('item',attrs=mail_attrs)
+			sms = xmpp.Node('item',attrs=sms_attrs)
+			reply = iq.buildReply(typ='result')
+			reply.setTagAttr('query','node',xmpp.NS_COMMANDS)
+			reply.setQueryPayload([mail, sms])
+			self.conn.send(reply)
+		elif node in ['conf_sms', 'send_sms']:
+			reply = iq.buildReply(typ='result')
+			reply.setTagAttr('query','node',node)
 			self.conn.send(reply)
 		else:
 			self.send_not_implemented(iq)
@@ -425,7 +508,7 @@ class XMPPTransport:
 			if not iq_children:
 				self.send_bad_request(iq)
 			else:
-				proto_dict = self.workup_search_input(iq)
+				proto_dict = forms.workup_search_input(iq)
 				mmp_conn = self.pool.get(jid_from)
 				if mmp_conn:
 					mmp_conn.search(proto_dict,iq)
@@ -584,30 +667,151 @@ class XMPPTransport:
 			txt = i18n.NOT_REGISTERED
 			self.send_error(iq,err,txt)
 			return
-		if typ=='set' and node=='mail':
-			if action=='execute' or (not action and not sessionid):
-				response = xmpp.Node('command', attrs={
-					'xmlns':xmpp.NS_COMMANDS,
-					'sessionid':'mail:'+str(time.time()),
-					'status':'executing',
-					'node':'mail'
-				})
-				opts = profile.Options(jid_from)
-				response.setPayload([
-					forms.Command(opts.getMboxStatus(),opts.getNewMail()).create()
-				])
+		if typ=='set' and node=='mail' and jid_to_stripped==self.name:
+			self.process_mail_cmd(iq, jid_from, command, sessionid, action)
+		elif typ=='set' and node in ['sms', 'conf_sms', 'send_sms']:
+			if self.pool.get(jid_from):
+				if node=='sms' and jid_to_stripped==self.name:
+					self.process_sms_cmd(iq, jid_from, command, sessionid, action)
+				elif node=='conf_sms' and utils.is_valid_email(utils.jid2mail(jid_to_stripped)):
+					self.process_conf_sms_cmd(iq, jid_from, command, sessionid, action)
+				elif node=='send_sms' and utils.is_valid_email(utils.jid2mail(jid_to_stripped)):
+					self.process_send_sms_cmd(iq, jid_from, command, sessionid, action)
+			else:
+				err = xmpp.ERR_REGISTRATION_REQUIRED
+				txt = i18n.NOT_CONNECTED
+				self.send_error(iq, err, txt)
+		else:
+			self.send_error(iq, xmpp.ERR_SERVICE_UNAVAILABLE)
+
+	def process_mail_cmd(self, iq, jid, command, sessionid, action):
+		if action=='execute' or (not action and not sessionid):
+			response = forms.get_cmd_header('executing','mail')
+			opts = profile.Options(jid)
+			response.setPayload([
+				forms.get_mail_form(opts.getMboxStatus(),opts.getNewMail())
+			])
+			reply = iq.buildReply(typ='result')
+			reply.setPayload([response])
+			self.conn.send(reply)
+		elif action=='complete' or (not action and sessionid):
+			response = forms.get_cmd_header('completed','mail',sessionid)
+			xdata = iq.getTag('command').getTag('x')
+			if forms.process_mail_command_xdata(jid, xdata):
+				note = xmpp.Node('note', attrs={'type':'info'})
+				note.setData(i18n.COMMAND_SAVE_OK)
+				response.setPayload([note])
 				reply = iq.buildReply(typ='result')
 				reply.setPayload([response])
 				self.conn.send(reply)
-			elif action=='complete' or (not action and sessionid):
-				response = xmpp.Node('command', attrs={
-					'xmlns':xmpp.NS_COMMANDS,
-					'sessionid':sessionid,
-					'status':'completed',
-					'node':'mail'
-				})
-				xdata = iq.getTag('command').getTag('x')
-				if self.process_command_xdata(jid_from, xdata):
+			else:
+				self.send_bad_request(iq)
+		elif action=='cancel':
+			response = forms.get_cmd_header('canceled','mail',sessionid)
+			reply = iq.buildReply(typ='result')
+			reply.setPayload([response])
+			self.conn.send(reply)
+		else:
+			self.send_bad_request(iq)
+
+	def process_sms_cmd(self, iq, jid, command, sessionid, action):
+		mmp_conn = self.pool.get(jid)
+		if action=='execute' or (not action and not sessionid):
+			response = forms.get_cmd_header('executing','sms')
+			response.setPayload([forms.gate_sms_form()])
+			reply = iq.buildReply(typ='result')
+			reply.setPayload([response])
+			self.conn.send(reply)
+		elif action=='cancel':
+			response = forms.get_cmd_header('canceled','sms',sessionid)
+			reply = iq.buildReply(typ='result')
+			reply.setPayload([response])
+			self.conn.send(reply)
+		elif action=='complete' or (not action and sessionid):
+			response = forms.get_cmd_header('completed','sms',sessionid)
+			xdata = iq.getTag('command').getTag('x')
+			code, result = forms.process_send_sms_xdata(xdata)
+			if code:
+				number, text = result
+				mmp_conn.mmp_send_sms(to=number,body=text)
+				note = xmpp.Node('note', attrs={'type':'info'})
+				note.setData(i18n.SMS_SEND_OK)
+				response.setPayload([note])
+				reply = iq.buildReply(typ='result')
+				reply.setPayload([response])
+				self.conn.send(reply)
+			else:
+				self.send_error(iq, xmpp.ERR_BAD_REQUEST, result)
+		else:
+			self.send_bad_request(iq)
+
+	def process_send_sms_cmd(self, iq, jid, command, sessionid, action):
+		jid_to = iq.getTo().getStripped()
+		mail = utils.jid2mail(jid_to)
+		mmp_conn = self.pool.get(jid)
+		if action=='execute' or (not action and not sessionid):
+			err = xmpp.ERR_ITEM_NOT_FOUND
+			if mail in mmp_conn.contact_list.getEmails():
+				nums = mmp_conn.contact_list.getPhones(mail)
+				if nums:
+					response = forms.get_cmd_header('executing','send_sms')
+					response.setPayload([forms.user_sms_form(nums)])
+					reply = iq.buildReply(typ='result')
+					reply.setPayload([response])
+					self.conn.send(reply)
+				else:
+					txt = i18n.USER_HAS_NO_PHONES
+					self.send_error(iq, err, txt)
+			else:
+				txt = i18n.USER_NOT_IN_CLIST
+				self.send_error(iq, err, txt)
+		elif action=='cancel':
+			response = forms.get_cmd_header('canceled','send_sms',sessionid)
+			reply = iq.buildReply(typ='result')
+			reply.setPayload([response])
+			self.conn.send(reply)
+		elif action=='complete' or (not action and sessionid):
+			response = forms.get_cmd_header('completed','send_sms',sessionid)
+			xdata = iq.getTag('command').getTag('x')
+			code, result = forms.process_send_sms_xdata(xdata)
+			if code:
+				number, text = result
+				mmp_conn.mmp_send_sms(to=number,body=text)
+				note = xmpp.Node('note', attrs={'type':'info'})
+				note.setData(i18n.SMS_SEND_OK)
+				response.setPayload([note])
+				reply = iq.buildReply(typ='result')
+				reply.setPayload([response])
+				self.conn.send(reply)
+			else:
+				self.send_error(iq, xmpp.ERR_BAD_REQUEST, result)
+		else:
+			self.send_bad_request(iq)
+
+	def process_conf_sms_cmd(self, iq, jid, command, sessionid, action):
+		jid_to = iq.getTo().getStripped()
+		mail = utils.jid2mail(jid_to)
+		mmp_conn = self.pool.get(jid)
+		if action=='execute' or (not action and not sessionid):
+			if mail in mmp_conn.contact_list.getEmails():
+				nums = mmp_conn.contact_list.getPhones(mail)
+				response = forms.get_cmd_header('executing','conf_sms')
+				response.setPayload([forms.conf_sms_form(nums)])
+				reply = iq.buildReply(typ='result')
+				reply.setPayload([response])
+				self.conn.send(reply)
+			else:
+				err = xmpp.ERR_ITEM_NOT_FOUND
+				txt = i18n.USER_NOT_IN_CLIST
+				self.send_error(iq, err, txt)
+		elif action=='complete' or (not action and sessionid):
+			response = forms.get_cmd_header('completed','send_sms',sessionid)
+			xdata = iq.getTag('command').getTag('x')
+			code, result = forms.process_conf_sms_xdata(xdata)
+			if code:
+				if mail in mmp_conn.contact_list.getEmails():
+					mmp_conn.set_sms_phones(mail, result)
+					mmp_conn.contact_list.setPhones(mail, result)
 					note = xmpp.Node('note', attrs={'type':'info'})
 					note.setData(i18n.COMMAND_SAVE_OK)
 					response.setPayload([note])
@@ -615,21 +819,16 @@ class XMPPTransport:
 					reply.setPayload([response])
 					self.conn.send(reply)
 				else:
-					self.send_bad_request(iq)
-			elif action=='cancel':
-				response = xmpp.Node('command', attrs={
-					'xmlns':xmpp.NS_COMMANDS,
-					'sessionid':sessionid,
-					'status':'canceled',
-					'node':'mail'
-				})
-				reply = iq.buildReply(typ='result')
-				reply.setPayload([response])
-				self.conn.send(reply)
+					err = xmpp.ERR_ITEM_NOT_FOUND
+					txt = i18n.USER_NOT_IN_CLIST
+					self.send_error(iq, err, txt)
 			else:
-				self.send_bad_request(iq)
-		else:
-			self.send_error(iq, xmpp.ERR_SERVICE_UNAVAILABLE)
+				self.send_error(iq, xmpp.ERR_BAD_REQUEST, result)
+		elif action=='cancel':
+			response = forms.get_cmd_header('canceled','conf_sms',sessionid)
+			reply = iq.buildReply(typ='result')
+			reply.setPayload([response])
+			self.conn.send(reply)
 
 	def presence_available_handler(self, presence):
 		jid_from = presence.getFrom()
@@ -736,8 +935,7 @@ class XMPPTransport:
 
 	def collect_versions(self):
 		self.last_version_time = time.strftime('%Y%m%d-%H%M')
-		version = xmpp.Iq(frm=conf.name,typ='get')
-		version.setTag('query',attrs={'xmlns':xmpp.NS_VERSION})
+		version = xmpp.Iq(frm=conf.name,typ='get',queryNS=xmpp.NS_VERSION)
 		for J in self.pool.getJids():
 			for resource in self.pool.getResources(J):
 				To = xmpp.JID(J)
@@ -780,31 +978,6 @@ class XMPPTransport:
 				except KeyError:
 					pass
 
-	def process_command_xdata(self, jid, xdata):
-		fields = self.validate_command_xdata(xdata)
-		if not fields:
-			return False
-		mbox_status = fields['mbox_status']
-		new_mail = fields['new_mail']
-		options = profile.Options(jid)
-		options.setNewMail(new_mail)
-		options.setMboxStatus(mbox_status)
-		return True
-
-	def validate_command_xdata(self, xdata):
-		ns = xdata.getNamespace()
-		typ = xdata.getAttr('type')
-		data = {}
-		if ns==xmpp.NS_DATA and typ=='submit':
-			d = xmpp.protocol.DataForm(node=xdata).asDict()
-			for k,v in d.items():
-				if v not in ['0', '1']:
-					continue
-				if k in ['mbox_status', 'new_mail']:
-					data[k] = v
-		if len(data.keys())==2:
-			return data
-
 	def get_register_form(self, jid):
 		user = profile.Profile(jid).getUsername()
 		instr = xmpp.Node('instructions')
@@ -817,73 +990,6 @@ class XMPPTransport:
 			return [instr,reg,email,passwd]
 		else:
 			return [instr,email,passwd]
-
-	def workup_search_input(self,mess):
-		xdf = [i for i in mess.getQueryChildren() if i.getNamespace() == xmpp.NS_DATA]
-		d = {}
-		if not xdf:
-			return d
-		xdata = xmpp.protocol.DataForm(node=xdf[0])
-		for k,v in xdata.asDict().items():
-			if not v:
-				continue
-			value = utils.str2win(v.strip())
-			if not value:
-				continue
-			if k == 'email':
-				d = {}
-				user = domain = ''
-				try:
-					user, domain = value.split('@')
-				except ValueError:
-					pass
-				if user and domain:
-					d[MRIM_CS_WP_REQUEST_PARAM_USER] = user
-					d[MRIM_CS_WP_REQUEST_PARAM_DOMAIN] = domain
-				return d
-			elif k == 'nick':
-				d[MRIM_CS_WP_REQUEST_PARAM_NICKNAME] = value
-			elif k == 'firstname':
-				d[MRIM_CS_WP_REQUEST_PARAM_FIRSTNAME] = value
-			elif k == 'lastname':
-				d[MRIM_CS_WP_REQUEST_PARAM_LASTNAME] = value
-			elif k == 'sex':
-				d[MRIM_CS_WP_REQUEST_PARAM_SEX] = value
-			elif k == 'age_from':
-				d[MRIM_CS_WP_REQUEST_PARAM_DATE1] = value
-			elif k == 'age_to':
-				d[MRIM_CS_WP_REQUEST_PARAM_DATE2] = value
-			elif k == 'city_id':
-				d[MRIM_CS_WP_REQUEST_PARAM_CITY_ID] = value
-			elif k == 'country_id':
-				d[MRIM_CS_WP_REQUEST_PARAM_COUNTRY_ID] = value
-			elif k == 'zodiac':
-				d[MRIM_CS_WP_REQUEST_PARAM_ZODIAC] = value
-			elif k == 'birthmonth':
-				d[MRIM_CS_WP_REQUEST_PARAM_BIRTHDAY_MONTH] = value
-			elif k == 'birthday':
-				d[MRIM_CS_WP_REQUEST_PARAM_BIRTHDAY_DAY] = value
-			elif k == 'online' and value == '1':
-				d[MRIM_CS_WP_REQUEST_PARAM_ONLINE] = ' '
-		return d
-
-	def roster_exchange(self, jid_from):
-		mmp_conn = self.pool.get(jid_from)
-		if not (mmp_conn and mmp_conn._got_roster):
-			return
-		rosterx = xmpp.Iq(frm=self.name,to=jid_from,typ='set')
-		x = xmpp.Node('x', attrs={'xmlns':xmpp.NS_ROSTERX})
-		items = []
-		for e_mail in mmp_conn.contact_list.getEmails():
-			if not mmp_conn.contact_list.getUserFlags(e_mail):
-				jid = utils.mail2jid(e_mail)
-				name = mmp_conn.contact_list.getUserNick(e_mail)
-				item = xmpp.Node('item',attrs={'action':'add','jid':jid,'name':name})
-				items.append(item)
-		if items:
-			x.setPayload(items)
-			rosterx.addChild(node=x)
-			self.conn.send(rosterx)
 
 	def show_status(self, jid, show, mmp_conn=None):
 		resource = xmpp.JID(jid).getResource()

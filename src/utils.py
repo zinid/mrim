@@ -21,6 +21,8 @@ mail_pattern = re.compile(
 	'[a-zA-Z0-9][a-zA-Z0-9_.-]{0,15}@(mail\.ru|inbox\.ru|bk\.ru|list\.ru|corp\.mail\.ru)$'
 )
 password_pattern = re.compile('[\040-\176]{4,}$')
+number_pattern = re.compile('[0-9]+$')
+upper_ascii_pattern = re.compile('[\200-\377]+')
 invalid_chars = re.compile(
 	'[\000-\011\013\014\016-\037\202\204-\207\210\211\213\221-\227\230\231\233\271]'
 )
@@ -54,6 +56,16 @@ OUTSMILES = [
 
 INCHARS = tuple(INSYMS+INTRANSTBL+INSMILES)
 OUTCHARS = tuple(OUTSYMS+OUTTRANSTBL+OUTSMILES)
+
+IN_TRANSLIT_TBL = tuple(["'",chr(0xa8),chr(0xb8)] + [chr(i) for i in range(0xc0,256)])
+_lat = [
+	'a','b','v','g','d','e','zh','z','i','jj','k','l','m','n','o','p','r',
+	's','t','u','f','kh','c','ch','sh','shh','"','y',"'",'eh','yu','ya'
+]
+OUT_TRANSLIT_TBL = tuple(['*','Jo','jo'] + [x[0].upper()+x[1:] for x in _lat] + _lat)
+
+UPPER_ASCII = tuple([chr(i) for i in range(128,256)])
+NULL_ASCII = tuple(['' for i in range(128,256)])
 
 try:
 
@@ -109,6 +121,21 @@ def is_valid_password(password):
 	else:
 		return False
 
+def is_valid_sms_number(number):
+	if number_pattern.match(number):
+		return True
+	else:
+		return False
+
+def is_valid_sms_text(text):
+	has_not_ascii = upper_ascii_pattern.search(text)
+	if has_not_ascii and len(text)<=37:
+		return True
+	elif (not has_not_ascii) and len(text)<=137:
+		return True
+	else:
+		return False
+
 def dump_packet(p):
 	print "--- Begin of dump ---"
 	print "Header: %s" % p.getHeader().__repr__()
@@ -135,6 +162,10 @@ def translate(s, t1, t2, index=0):
 
 def winrtf(s):
 	return translate(s, INCHARS, OUTCHARS)
+
+def translit(s):
+	en = translate(s, IN_TRANSLIT_TBL, OUT_TRANSLIT_TBL)
+	return translate(en, UPPER_ASCII, NULL_ASCII)
 
 def win2str(s):
 	t = invalid_chars.sub(' ',s)

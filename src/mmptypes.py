@@ -28,7 +28,9 @@ MESSAGE_FLAG_SYSTEM = 0x00000040
 MESSAGE_FLAG_RTF = 0x00000080
 MESSAGE_FLAG_CONTACT = 0x00000200
 MESSAGE_FLAG_NOTIFY = 0x00000400
+MESSAGE_FLAG_SMS = 0x00000800
 MESSAGE_FLAG_MULTICAST = 0x00001000
+MESSAGE_FLAG_SMS_STATUS = 0x00002000
 ##############
 
 MAX_MULTICAST_RECIPIENTS = 50
@@ -127,6 +129,7 @@ MRIM_CS_MODIFY_CONTACT = 0x101B			#C -> S
 	UL group id (unused if contact is group)
 	LPS contact
 	LPS name
+	LPS sms numbers
 '''
 
 MRIM_CS_MODIFY_CONTACT_ACK = 0x101C		# S -> C
@@ -272,6 +275,16 @@ MAX_CLIENT_DESCRIPTION = 256
 
 # Not described in protocol! (mail.ru sucks)
 #MRIM_CS_FILE_TRANSFER = 0x1026			# S -> C
+MRIM_CS_SMS = 0x1039
+'''
+	UL - unknown
+	LPS - number
+	LPS - text
+'''
+MRIM_CS_SMS_ACK = 0x1040
+'''
+	UL - status
+'''
 
 ZODIAC = {
 	'1':'Овен',

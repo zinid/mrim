@@ -421,6 +421,14 @@ class Client(asyncore.dispatcher_with_send):
 		elif mess.hasFlag(MESSAGE_FLAG_AUTHORIZE):
 			text = mess.getBodyPayload()
 			self.mmp_handler_got_subscribe(frm, text, offtime)
+		elif mess.hasFlag(MESSAGE_FLAG_SMS):
+			number = frm.replace('+','')
+			text = mess.getBodyPayload()
+			users = []
+			for user in self.contact_list.getEmails():
+				if number in self.contact_list.getPhones(user):
+					users.append(user)
+			self.mmp_handler_got_sms(frm, users, text, offtime)
 		else:
 			try:
 				self.__composing_container.remove(mess.getFrom())
@@ -541,6 +549,15 @@ class Client(asyncore.dispatcher_with_send):
 		if ackf:
 			self.ack_buf[ret_id] = {'ackf':ackf,'acka':acka}
 
+	def mmp_send_sms(self, to, body, ackf=None, acka={}):
+
+		#enc_body = utils.str2win(body)
+		d = {'UNKNOWN':0, 'number':to, 'text':body}
+		p = protocol.MMPPacket(typ=MRIM_CS_SMS,dict=d)
+		ret_id = self._send_packet(p)
+		if ackf:
+			self.ack_buf[ret_id] = {'ackf':ackf,'acka':acka}
+
 	def mmp_send_subscribe(self, to, body=' '):
 
 		if (to in self.contact_list.getEmails()) and (not self.contact_list.getAuthFlag(to)):
@@ -612,17 +629,38 @@ class Client(asyncore.dispatcher_with_send):
 		if e_mail in self.contact_list.getEmails():
 			contact_id = self.contact_list.getUserId(e_mail)
 			name = self.contact_list.getUserNick(e_mail)
+			phones = self.contact_list.getPhones(e_mail)
 			d = {
 				'id':contact_id,
 				'flags':1,
 				'group_id':0,
 				'contact':e_mail,
 				'name':utils.str2win(name),
-				'UNKNOWN':0
+				'phones':','.join(phones)
 			}
 			p = protocol.MMPPacket(typ=MRIM_CS_MODIFY_CONTACT,dict=d)
 			ret_id = self._send_packet(p)
 			self.ack_buf[ret_id] = {'mail':e_mail}
+			if ackf:
+				self.ack_buf[ret_id].update({'ackf':ackf,'acka':acka})
+
+	def mmp_modify_sms(self, e_mail, numbers, ackf=None, acka={}):
+
+		if e_mail in self.contact_list.getEmails():
+			contact_id = self.contact_list.getUserId(e_mail)
+			name = self.contact_list.getUserNick(e_mail)
+			phones = ','.join(numbers)
+			group_id = self.contact_list.getUserGroup(e_mail)
+			d = {
+				'id':contact_id,
+				'flags':0,
+				'group_id':group_id,
+				'contact':e_mail,
+				'name':utils.str2win(name),
+				'phones':phones
+			}
+			p = protocol.MMPPacket(typ=MRIM_CS_MODIFY_CONTACT,dict=d)
+			ret_id = self._send_packet(p)
 			if ackf:
 				self.ack_buf[ret_id].update({'ackf':ackf,'acka':acka})
 
@@ -698,4 +736,7 @@ class Client(asyncore.dispatcher_with_send):
 		pass
 
 	def mmp_handler_got_modify_contact_ack(self, status):
+		pass
+
+	def mmp_handler_got_sms(self, number, users, text, offtime):
 		pass
