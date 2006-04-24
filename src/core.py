@@ -335,7 +335,8 @@ class Client(asyncore.dispatcher_with_send):
 					'group':0,
 					'nick':_ack['nick'],
 					'server_flags':1,
-					'status':_ack['status']
+					'status':_ack['status'],
+					'phones':''
 				}
 				self.contact_list.cids[_ack['mail']] = mmp_packet.getBodyAttr('contact_id')
 			_ack['ackf'](status, **_ack['acka'])

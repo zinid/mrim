@@ -1,3 +1,7 @@
+2006-04-24  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/core.py:
+	 Bugfix.
+
 2006-04-21  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/transport.py, src/utils.py, src/core.py, src/mmptypes.py:
 	* src/protocol.py, src/i18n.py, src/forms.py, src/glue.py, README:
