@@ -41,7 +41,7 @@ For *nix installations:
 
 Configure file has 'ini' syntax. New lines must NOT start with whitespace characters.
 Line continuations are NOT supported. Comments are started with '#'.
-There is three sections in config file: [main], [profile] and [logger].
+There are three sections in config file: [main], [profile] and [logger].
 Example config file is located in Mrim directory.
 
 1) Section [main].
@@ -93,7 +93,7 @@ Example config file is located in Mrim directory.
 		Format: http://proxy.server:port
 		HTTP proxy support for user avatars. See section 4 for details.
 	admins
-		By default, there is no admins.
+		By default, there are no admins.
 		Format: jid1, jid2, ..., jidN
 		JIDs of users with administrative permissions.
 		Currently admins can see online users in Mrim's discovery items.
