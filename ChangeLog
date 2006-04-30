@@ -1,3 +1,9 @@
+2006-04-30  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* INSTALL:
+	 Installation notes.
+	* TODO:
+	 Some changes.
+
 2006-04-24  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/core.py:
 	 Bugfix.

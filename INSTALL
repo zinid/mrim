@@ -1,1 +1,173 @@
-FIXME :)
+
+	TABLE OF CONTENTS
+
+	1) Installation.
+	2) Configuration file.
+	3) Command line options.
+	4) Proxy support.
+	5) Hardware requirements.
+	6) Feedback.
+
+
+
+	1. Installation
+
+Note: I didn't tested Mrim on Windows, because I don't have Windows
+installed on my computer.
+
+For *nix installations:
+1) Make sure you have Python >= 2.3 installed.
+2) Install xmpp.py library from http://xmpppy.sourceforge.net (you need at least version >= 3.1).
+3) Download Mrim archive and decompress it:
+	tar -xjvf mrim-x.y.tar.bz2
+4) Enter to Mrim directory:
+	cd mrim-x.y
+5) Copy mrim.conf.example to mrim.conf:
+	cp mrim.conf.example mrim.conf
+6) Edit mrim.conf (see section 2 of this document).
+7) Check access for
+	a) mrim.mail.ru:2042
+	b) mrimX.mail.ru:2041 (currently X = 1,...,7).
+	c) avt.foto.mail.ru:80
+	See section 4 of this document if you want to use proxies.
+8) Check permissions on config file, log file and profiles directory.
+9) Run Mrim:
+	./mrim.sh -c mrim.conf
+	For all command line options refer to section 3 of this document.
+
+
+
+	2. Configuration file.
+
+Configure file has 'ini' syntax. New lines must NOT start with whitespace characters.
+Line continuations are NOT supported. Comments are started with '#'.
+There is three sections in config file: [main], [profile] and [logger].
+Example config file is located in Mrim directory.
+
+1) Section [main].
+	name
+		Required.
+		Format: any_string
+		DNS name of service. Your XMPP server must correctly resolves it.
+	password
+		Requried.
+		Format: any_string
+		Password for external components access.
+		Refer to documentation of your XMPP server if you had not set it already.
+	port
+		Default is 5347.
+		Format: any_integer
+		Port that your XMPP server listens for external components.
+		Refer to documentation of your XMPP server if you had not set it already.
+	server
+		Default is localhost.
+		Format: dns name or ip address
+		Target IP address or DNS name of your XMMP server.
+	disconame
+		Default is Mail.ru IM.
+		Format: any_string
+		Discovery name of Mrim service.
+	reconnect
+		Default is on.
+		Format: on|off
+		Automatically reconnects users after tcp session failure.
+	probe
+		Default is on.
+		Format: on|off
+		Send 'probe' stanzas to registered users on startup. That means service tries to
+		connect all registered online users on startup.
+	show_version
+		Default is on.
+		Format: on|off
+		Shows service version through iq:version stanza.
+	show_os
+		Default is on.
+		Format: on|off
+		Shows server's operation system (on which mrim is running) through iq:version stanza.
+	psyco
+		Default is off.
+		Format: on|off
+		Psyco support (see http://psyco.sourceforge.net). Not well tested and hence NOT recommended.
+	http_proxy
+		By default, there is no http proxy server.
+		Format: http://proxy.server:port
+		HTTP proxy support for user avatars. See section 4 for details.
+	admins
+		By default, there is no admins.
+		Format: jid1, jid2, ..., jidN
+		JIDs of users with administrative permissions.
+		Currently admins can see online users in Mrim's discovery items.
+
+2) Section [profile]
+	type
+		Required.
+		Format: xml.
+		Type of users profiles. Currently only xml-like storage is available.
+	dir
+		Required.
+		Format: /path/to/profile/dir
+		Directory for storing users profiles.
+
+3) Section [logger]
+	logfile
+		Requried.
+		Format: /path/to/logfile
+		Path to log file.
+	loglevel
+		Required.
+		Format: debug|info|warning|error|critical
+		The level of logging messages. Recommended level is 'info'.
+		Use 'debug' level only if you've found a bug and want to investigate it before sending report.
+	xml_formatting
+		Default is off.
+		Format: on|off.
+		Use it only with 'debug' loglevel if you want pretty xml debugging with indentations.
+		Warning: don't use this option in production systems! It eats a lot of resources!
+	timestamp
+		Default is %%d/%%m/%%y-%%H:%%M:%%S
+		Format: formatted_string
+		Format of timestamps in log messages. Every variables must starts with '%%'.
+		For example, %%H means a hour, %%m means a month, etc.
+		See the python library reference manual of 'time' module for available variables.
+
+
+
+	3. Command line options.
+
+Available command line options are:
+	-h            brief help.
+	-d            run in background, currently works only on *nix.
+	-c filename   path to config file.
+
+
+
+	4. Proxy support.
+
+Mrim tries to connect to
+	a) mrim.mail.ru:2042
+	b) mrimX.mail.ru:2041 (currently X = 1,...,7).
+	c) avt.foto.mail.ru:80
+However if you don't have direct access to any of this addresses you might want to use proxy servers.
+Mrim gets user avatars from http://avt.foto.mail.ru. If you have available HTTP proxy server,
+you have to use 'http_proxy' option in configuration file (see section 2.1).
+Unfortunately, Mrim doesn't support SOCKS proxying natively. You may use transparent SOCKS proxying library.
+For example, Mrim is well tested with tsocks (http://tsocks.sourceforge.net).
+
+
+
+	5. Hardware requirements.
+
+As you might know, python eats a lot of cpu and memory. However, cpu is not a bottleneck.
+For example, 233MHz CPU is not a big problem. The main problem is memory usage.
+Recommended RAM (only for Mrim process, not for system entirely!) is:
+	128Mb for less than 50 of online users;
+	256Mb for 100-300 of online users;
+	512Mb for 300-500 of online users;
+
+Please contact me if you run into performance issues.
+
+
+
+	6. Feedback.
+
+There is the public XMPP conference at mrim@conference.jabber.ru.

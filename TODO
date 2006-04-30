@@ -1,5 +1,1 @@
-* better clist-to-xdb support.
-* better subscription support.
-* profile storage in mysql, pgsql.
-* xml:lang support (does it really need?)
-* file transfer support (need reversing, mail.ru sucks)
+* File transfer support.
