@@ -150,7 +150,7 @@ Mrim tries to connect to
 However if you don't have direct access to any of this addresses you might want to use proxy servers.
 Mrim gets user avatars from http://avt.foto.mail.ru. If you have available HTTP proxy server,
 you have to use 'http_proxy' option in configuration file (see section 2.1).
-Unfortunately, Mrim doesn't support SOCKS proxying natively. You may use transparent SOCKS proxying library.
+Unfortunately, Mrim doesn't support SOCKS proxying natively. You may use transparent SOCKS proxying library though.
 For example, Mrim is well tested with tsocks (http://tsocks.sourceforge.net).
 
 
