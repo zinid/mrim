@@ -1,5 +1,9 @@
+2006-05-06  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/glue.py, src/core.py, src/utils.py, README:
+	 User Nickname support (JEP-0172).
+
 2006-04-30  Evgeniy Khramtsov  <xramtsov@gmail.com>
-	First release.
+	First realease.
 	* INSTALL:
 	 Installation notes.
 	* TODO:

@@ -193,8 +193,12 @@ class MMPConnection(core.Client):
 			#if self.contact_list.getAuthFlag(e_mail):
 			#	continue
 			if not self.contact_list.getUserFlags(e_mail):
+				nickname = self.contact_list.getUserNick(e_mail)
+				if not nickname:
+					nickname = e_mail
 				jid_from = utils.mail2jid(e_mail)
 				subscribe = xmpp.Presence(frm=jid_from,typ='subscribe')
+				subscribe.addChild(name='nick',payload=[nickname],namespace=xmpp.NS_NICK)
 				self.authed_users.append(e_mail)
 				self.send_stanza(subscribe)
 				mrim_status = self.contact_list.getUserStatus(e_mail)
@@ -247,8 +251,11 @@ class MMPConnection(core.Client):
 		msg.setFrom(jid_from)
 		self.send_stanza(msg, self.jid)
 
-	def mmp_handler_got_subscribe(self, e_mail, txt, offtime):
+	def mmp_handler_got_subscribe(self, e_mail, name, txt, offtime):
+		
 		subscribe = xmpp.Presence(frm=utils.mail2jid(e_mail),typ='subscribe')
+		if name:
+			subscribe.addChild(name='nick',payload=[name],namespace=xmpp.NS_NICK)
 		if offtime:
 			stamp = time.strftime('%Y%m%dT%H:%M:%S', offtime)
 			delay = xmpp.Node('x', attrs={'xmlns':xmpp.NS_DELAY, 'from':conf.name})

@@ -199,6 +199,34 @@ def dec2bin(n):
 		n = n >> 1
 	return bStr
 
+def decode_auth_string(enc_str):
+	s = base64.decodestring(enc_str)
+	num = struct.unpack('I', s[:4])[0]
+	name, txt = '',''
+	if num>1:
+		try:
+			nlen = struct.unpack('I', s[4:8])[0]
+			name = s[8:8+nlen]
+			tlen = struct.unpack('I', s[8+nlen:12+nlen])[0]
+			txt = s[12+nlen:12+nlen+tlen]
+			if not name.strip():
+				name = ''
+			if not txt.strip():
+				txt = ''
+		except:
+			pass
+	name = win2str(name)
+	txt = win2str(txt)
+	return (name,txt)
+
+def encode_auth_string(name, text):
+	name = str2win(name)
+	text = str2win(text)
+	num = struct.pack('I', 2)
+	nlen = struct.pack('I', len(name))
+	tlen = struct.pack('I', len(text))
+	return base64.encodestring(num+nlen+name+tlen+text)
+
 class MoscowTimeZone(datetime.tzinfo):
 
 	def __init__(self):

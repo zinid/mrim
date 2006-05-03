@@ -55,6 +55,7 @@ class Client(asyncore.dispatcher_with_send):
 		self.last_ping_time = time.time()
 		asyncore.dispatcher_with_send.__init__(self)
 		self.logger = logger
+		self.myname = ''
 
 	def log(self, level, message):
 		self.logger.log(level, '[%s] %s' % (self.__login, message))
@@ -255,6 +256,7 @@ class Client(asyncore.dispatcher_with_send):
 			total = mmp_packet.getBodyAttr('total')
 			unread = mmp_packet.getBodyAttr('unread')
 			nickname = mmp_packet.getBodyAttr('nickname')
+			self.myname = utils.win2str(nickname)
 			utils.start_daemon(self._got_mbox_status, (total, unread))
 
 		elif ptype == MRIM_CS_USER_STATUS:
@@ -421,7 +423,8 @@ class Client(asyncore.dispatcher_with_send):
 			self._parse_typing_notify(mess.getFrom())
 		elif mess.hasFlag(MESSAGE_FLAG_AUTHORIZE):
 			text = mess.getBodyPayload()
-			self.mmp_handler_got_subscribe(frm, text, offtime)
+			auth_name, auth_text = utils.decode_auth_string(text)
+			self.mmp_handler_got_subscribe(frm, auth_name, auth_text, offtime)
 		elif mess.hasFlag(MESSAGE_FLAG_SMS):
 			number = frm.replace('+','')
 			text = mess.getBodyPayload()
@@ -596,7 +599,7 @@ class Client(asyncore.dispatcher_with_send):
 			'email': e_mail,
 			'name': enc_nick,
 			'UNKNOWN':0,
-			'text':base64.encodestring('\x02\x00\x00\x00\x01\x00\x00\x00 \x01\x00\x00\x00 ')
+			'text':utils.encode_auth_string(self.myname,' ')
 		}
 		p = protocol.MMPPacket(typ=MRIM_CS_ADD_CONTACT,dict=d)
 		ret_id = self._send_packet(p)
@@ -727,7 +730,7 @@ class Client(asyncore.dispatcher_with_send):
 	def mmp_handler_got_anketa(self, anketa, msg_id):
 		pass
 
-	def mmp_handler_got_subscribed(self, frm, time):
+	def mmp_handler_got_subscribed(self, frm, name, text, time):
 		pass
 
 	def mmp_handler_got_subscribe(self, frm, text):

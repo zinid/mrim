@@ -22,6 +22,7 @@ import logging
 xmpp.NS_GATEWAY = 'jabber:iq:gateway'
 xmpp.NS_STATS = 'http://jabber.org/protocol/stats'
 xmpp.NS_ROSTERX = 'http://jabber.org/protocol/rosterx'
+xmpp.NS_NICK = 'http://jabber.org/protocol/nick'
 
 conf = mrim.conf
 
