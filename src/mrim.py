@@ -4,16 +4,19 @@ import config
 import sys
 import getopt
 import signal
+import os
 
 usage = '''Usage:
 -d        detach from console
--c file   path to config file'''
+-c file   path to config file
+-p file   path to pid file'''
 
 daemon = False
 config_file = None
+pid = None
 
 try:
-	opts, args = getopt.getopt(sys.argv[1:], "hdc:")
+	opts, args = getopt.getopt(sys.argv[1:], "hdc:p:")
 except getopt.GetoptError, e:
 	print "Can't start:", e.msg
 	print usage
@@ -27,6 +30,8 @@ for k,v in opts:
 		daemon = True
 	elif k == '-c':
 		config_file = v
+	elif k == '-p':
+		pid = v
 
 if not config_file:
 	print usage
@@ -34,7 +39,17 @@ if not config_file:
 
 conf = config.Config(config_file)
 conf.daemon = daemon
+if pid:
+	conf.pidfile = pid
 
 if __name__ == "__main__":
+	if conf.pidfile:
+		try:
+			pidfile = open(conf.pidfile, 'w')
+			pidfile.write(`os.getpid()`+'\n')
+			pidfile.close()
+		except IOError, e:
+			print "PID file I/O error (%s): %s" % (conf.pidfile, e.strerror)
+			sys.exit(1)
 	import init
 	init.start()

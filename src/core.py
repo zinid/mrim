@@ -33,14 +33,14 @@ class Client(asyncore.dispatcher_with_send):
 		# some initial values
 		self.__server = server
 		self.__port = port
-		self.__login = login
+		self._login = login
 		self.__password = password
 		self.__agent = agent
 		self.__status = status
 		self._got_roster = False
 		self._is_authorized = False
 		self._is_connected = False
-		self._mbox_url = "http://win.mail.ru/cgi-bin/auth?Login=%s&agent=" % self.__login
+		self._mbox_url = "http://win.mail.ru/cgi-bin/auth?Login=%s&agent=" % self._login
 		self.__composing_container = []
 		self.__continue_body = False
 		self.__continue_header = False
@@ -58,7 +58,7 @@ class Client(asyncore.dispatcher_with_send):
 		self.myname = ''
 
 	def log(self, level, message):
-		self.logger.log(level, '[%s] %s' % (self.__login, message))
+		self.logger.log(level, '[%s] %s' % (self._login, message))
 
 	def dump_packet(self, p):
 		dump = "--- begin ---\n"
@@ -393,7 +393,7 @@ class Client(asyncore.dispatcher_with_send):
 
 		self.log(logging.INFO, "Sending credentials")
 		d = {
-			'login':utils.str2win(self.__login),
+			'login':utils.str2win(self._login),
 			'password':utils.str2win(self.__password),
 			'status':self.__status,
 			'user_agent':utils.str2win(self.__agent)

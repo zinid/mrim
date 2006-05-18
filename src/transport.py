@@ -595,15 +595,19 @@ class XMPPTransport:
 		jid_from_stripped = jid_from.getStripped()
 		jid_to_stripped = jid_to.getStripped()
 		typ = iq.getType()
+		mmp_conn = self.pool.get(jid_from)
 		if jid_to_stripped!=self.name and typ=='get':
-			if self.pool.get(jid_from):
+			if mmp_conn:
 				e_mail = utils.jid2mail(jid_to_stripped)
-				self.pool.get(jid_from).get_vcard(e_mail, iq)
+				mmp_conn.get_vcard(e_mail, iq)
 			else:
 				err = xmpp.ERR_REGISTRATION_REQUIRED
 				txt = i18n.NOT_CONNECTED
 				self.send_error(iq,err,txt)
 		elif jid_to_stripped==self.name and typ=='get':
+			'''if mmp_conn:
+				mmp_conn.get_vcard(self.name, iq)
+			else:'''
 			vcard = xmpp.Node('vCard', attrs={'xmlns':xmpp.NS_VCARD})
 			vcard.setTagData('NICKNAME', conf.program)
 			vcard.setTagData('DESC', 'XMPP to Mail.Ru-IM Transport')
@@ -995,12 +999,21 @@ class XMPPTransport:
 	def show_status(self, jid, show, mmp_conn=None):
 		resource = xmpp.JID(jid).getResource()
 		if mmp_conn:
+			status = utils.show2status(show)
+			mmp_conn.current_status = status
 			if mmp_conn._is_authorized:
-				status = utils.show2status(show)
 				mmp_conn.mmp_change_status(status)
 				if resource not in self.pool.getResources(jid):
 					self.conn.send(xmpp.Presence(frm=self.name,to=jid))
 					mmp_conn.broadcast_online(jid)
+				ricochet = xmpp.Presence(frm=self.name)
+				if show in ['dnd', 'xa', 'away']:
+					ricochet.setShow('away')
+				for resource in self.pool.getResources(jid):
+					To = xmpp.JID(jid)
+					To.setResource(resource)
+					ricochet.setTo(To)
+					self.conn.send(ricochet)
 		else:
 			pass
 		if resource:

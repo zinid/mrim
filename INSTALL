@@ -39,7 +39,7 @@ For *nix installations:
 
 	2. Configuration file.
 
-Configure file has 'ini' syntax. New lines must NOT start with whitespace characters.
+Configuration file has 'ini' syntax. New lines must NOT start with whitespace characters.
 Line continuations are NOT supported. Comments are started with '#'.
 There are three sections in config file: [main], [profile] and [logger].
 Example config file is located in Mrim directory.
@@ -97,6 +97,10 @@ Example config file is located in Mrim directory.
 		Format: jid1, jid2, ..., jidN
 		JIDs of users with administrative permissions.
 		Currently admins can see online users in Mrim's discovery items.
+	pidfile
+		By default, mrim doesn't create PID file.
+		Format: /path/to/pid/file.
+		Path to PID file. You can override this value by command line option (see section 3).
 
 2) Section [profile]
 	type
@@ -138,6 +142,7 @@ Available command line options are:
 	-h            brief help.
 	-d            run in background, currently works only on *nix.
 	-c filename   path to config file.
+	-p filename   path to PID file.
 
 
 

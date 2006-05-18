@@ -7,7 +7,7 @@ import re
 import logging
 
 PROGRAM = 'Mrim'
-VERSION = '0.1-svn-20060506'
+VERSION = '0.1-svn-20060518'
 DEFAULTS = {
 	'server':'localhost',
 	'disconame':'Mail.ru IM',
@@ -20,7 +20,8 @@ DEFAULTS = {
 	'psyco':'off',
 	'timestamp':'%%d/%%m/%%y-%%H:%%M:%%S',
 	'http_proxy': '',
-	'xml_formatting': 'off'
+	'xml_formatting': 'off',
+	'pidfile': ''
 }
 
 class Config:
@@ -78,6 +79,7 @@ class Config:
 		self.timestamp = config.get('logger', 'timestamp')
 		self.http_proxy = config.get('main', 'http_proxy')
 		self.xml_formatting = config.getboolean('logger', 'xml_formatting')
+		self.pidfile = config.get('main', 'pidfile')
 
 	def get_os(self):
 		v = [str(x) for x in sys.version_info[:3]]

@@ -124,6 +124,10 @@ def start():
 		except KeyboardInterrupt:
 			logger.critical('Got SIGINT, closing connections')
 			xmpp_con.stop()
+			try:
+				os.unlink(conf.pidfile)
+			except OSError:
+				pass
 			logger.critical('Shutdown')
 			sys.exit(0)
 		except:

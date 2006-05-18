@@ -35,6 +35,7 @@ class MMPConnection(core.Client):
 		self.init_status = utils.show2status(init_status)
 		self.roster_action = {}
 		self.ids = []
+		self.current_status = self.init_status
 		self.authed_users = []
 		self.mrim_host_ip = ''
 		self.Roster = profile.Profile(self.jid)
@@ -155,6 +156,11 @@ class MMPConnection(core.Client):
 			self.exit(notify=False)
 		subscribe = xmpp.Presence(frm=conf.name,typ='subscribe')
 		online = xmpp.Presence(frm=conf.name)
+		if self.current_status != self.init_status:
+			self.mmp_change_status(self.current_status)
+		typ,show = utils.status2show(self.current_status)
+		if show:
+			online.setShow(show)
 		self.send_stanza(subscribe)
 		self.send_stanza(online)
 		self.starttime = time.time()
@@ -397,7 +403,6 @@ class MMPConnection(core.Client):
 
 	def got_vcard(self, anketa, mail, msg):
 		anketa_entries = anketa.getVCards()
-		jid_from = utils.mail2jid(mail)
 		status = anketa.getStatus()
 		jid_to = msg.getFrom()
 		if len(anketa_entries) == 1:
@@ -419,7 +424,7 @@ class MMPConnection(core.Client):
 			self.xmpp_conn.send_error(msg,err,err_txt)
 
 	def got_full_vcard(self, avatara, typ, album, vcard, msg, mail):
-		jid_from = utils.mail2jid(mail)
+		jid_from = msg.getTo() #utils.mail2jid(mail)
 		jid_to = msg.getFrom()
 		iq = xmpp.Iq(frm=jid_from,typ='result')
 		iq.setAttr('id', msg.getAttr('id'))
@@ -479,6 +484,8 @@ class MMPConnection(core.Client):
 				self.send_stanza(repl_msg,msg.getFrom())
 
 	def get_vcard(self, mail, mess):
+		'''if mail == conf.name:
+			mail = self._login'''
 		if utils.is_valid_email(mail):
 			user,domain = mail.split('@')
 			d = {

@@ -14,6 +14,8 @@ password = secret
 # psyco = off
 # -- http proxy for avatars (default is none) --
 # http_proxy = http://localhost:3128
+# -- PID file (default is none) --
+# pidfile = /var/run/mrim.pid
 
 [profile]
 type = xml
