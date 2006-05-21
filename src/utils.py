@@ -261,6 +261,13 @@ def msk2utc(t):
 	d = datetime.datetime(*T)
 	return d.utctimetuple()
 
+def socket_error(e):
+	if len(e.args)>1:
+		err_txt = e.args[1]
+	else:
+		err_txt = e.args[0]
+	return err_txt
+
 def gettime():
 	T = {}
 	if time.daylight:
@@ -270,15 +277,6 @@ def gettime():
 	T['utc'] = time.strftime('%Y%m%dT%H:%M:%S', time.gmtime())
 	T['display'] = time.asctime()
 	return T
-
-def get_server(host='mrim.mail.ru', port=2042):
-	socket.setdefaulttimeout(30)
-	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	s.connect((host, port))
-	data = s.recv(1024)
-	s.close()
-	serv, serv_port = data.strip().split(':')
-	return (serv, int(serv_port))
 
 def uptime(T):
 	t = int(T)

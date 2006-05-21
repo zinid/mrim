@@ -44,6 +44,9 @@ class MMPConnection(core.Client):
 		self.conn_spool.push(jid,self)
 		self.run()
 
+	'''def __del__(self):
+		self.log(logging.INFO, "------- Connection closed --------")'''
+
 	def send_stanza(self, stanza, jid=None):
 		typ = stanza.getType()
 		if typ in ['subscribe','subscribed','unsubscribe','unsubscribed']:
@@ -89,26 +92,31 @@ class MMPConnection(core.Client):
 
 	def handle_close(self):
 
-		self.failure_exit("Connection reset by peer")
+		if self.state == 'init':
+			self.get_server(self.servportdata)
+		else:
+			self.failure_exit("Connection reset by peer")
 
 	def handle_error(self):
 
-		t, v, tb = sys.exc_info()
+		t, err, tb = sys.exc_info()
 		if t == socket.error:
-			self.failure_exit(v[1])
+			reason = utils.socket_error(err)
+			if self.state == 'init':
+				if reason != 'Broken pipe':
+					self.failure_exit("Can't get address of target server (%s)" % reason)
+			else:
+				self.failure_exit(reason)
 		else:
 			traceback.print_exc()
 
 	def exit(self, notify=True):
-		self._is_authorized = False
 		if notify:
 			self.broadcast_offline()
 		self.mmp_connection_close()
 		self.conn_spool.remove(self.jid)
 
 	def failure_exit(self,errtxt):
-		self._is_authorized = False
-		t = random.choice(xrange(1,10))
 		if self.iq_register:
 			rej = xmpp.ERR_INTERNAL_SERVER_ERROR
 			rej_txt = i18n.CONNECTION_ERROR
@@ -119,31 +127,36 @@ class MMPConnection(core.Client):
 			self.close()
 		except:
 			pass
-		self.log(logging.INFO, "Legacy connection error (%s): %s" % (self.mrim_host_ip, errtxt))
+		if self.state == 'session_established':
+			when = 'now'
+		else:
+			when = 'after'
+		if self.state == 'init':
+			self.log(logging.INFO, errtxt)
+		else:
+			self.log(logging.INFO, "Connection error (%s): %s" % (self.mrim_host_ip, errtxt))
+		self.state = 'closed'
 		if conf.reconnect:
-			self.log(logging.INFO, "Reconnect over %s seconds" % t)
-			time.sleep(t)
 			self.conn_spool.remove(self.jid)
-			self.zombie.put(self.jid)
+			self.zombie.put((self.jid, self._login, when))
 		else:
 			self.conn_spool.remove(self.jid)
 
 	def run(self,server=None, port=None):
-
+		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.log(logging.INFO, "Getting address of target server from mrim.mail.ru:2042")
+		s = server or 'mrim.mail.ru'
+		p = port or 2042
 		try:
-			self.log(logging.INFO, "Getting address of target server from mrim.mail.ru:2042")
-			self.mrim_host_ip,port = utils.get_server()
+			self.connect((s, p))
 		except socket.error, e:
-			if len(e.args)>1:
-				err_txt = e.args[1]
-			else:
-				err_txt = e.args[0]
-			self.failure_exit("Can't get address of target server (%s)" % err_txt)
-			return
-		if self.conn_spool.get(self.jid) == self:
-			self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-			self.log(logging.INFO, "Connecting to %s:%s" % (self.mrim_host_ip,port))
-			self.connect((self.mrim_host_ip,port))
+			reason = utils.socket_error(e)
+			self.failure_exit("Can't get address of target server (%s)" % reason)
+
+	def main_connect(self):
+		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.log(logging.INFO, "Connecting to %s:%s" % (self.mrim_host_ip,self.mrim_host_port))
+		self.connect((self.mrim_host_ip,self.mrim_host_port))
 
 	def mmp_handler_server_authorized(self):
 		if self.iq_register:

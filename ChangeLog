@@ -1,3 +1,7 @@
+2006-05-21  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/core.py, src/glue.py, src/transport.py, src/utils.py:
+	 Sockets, threads and reconnects cleanup.
+
 2006-05-18  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/core.py, src/glue.py, src/transport.py:
 	 Transport roster item shows user's legacy status.

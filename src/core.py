@@ -38,8 +38,7 @@ class Client(asyncore.dispatcher_with_send):
 		self.__agent = agent
 		self.__status = status
 		self._got_roster = False
-		self._is_authorized = False
-		self._is_connected = False
+		self.state = 'init'
 		self._mbox_url = "http://win.mail.ru/cgi-bin/auth?Login=%s&agent=" % self._login
 		self.__composing_container = []
 		self.__continue_body = False
@@ -50,12 +49,16 @@ class Client(asyncore.dispatcher_with_send):
 		self.ack_buf = {}
 		self._pings = 0
 		self.ping_period = 30
+		self.mrim_host_ip = ''
+		self.mrim_host_port = 0
 		self.wp_req_pool = []
 		self.last_wp_req_time = time.time()
 		self.last_ping_time = time.time()
 		asyncore.dispatcher_with_send.__init__(self)
 		self.logger = logger
 		self.myname = ''
+		self.servportdata = ''
+		self.__outbuf = []
 
 	def log(self, level, message):
 		self.logger.log(level, '[%s] %s' % (self._login, message))
@@ -65,6 +68,22 @@ class Client(asyncore.dispatcher_with_send):
 		dump += "Header: %s\nBody: %s\n" % (p.getHeader().__repr__(), p.getBody().__repr__())
 		dump += "--- end ---"
 		return dump
+
+	def get_server(self, data):
+
+		try:
+			self.mrim_host_ip, port = data.strip().split(':')
+		except:
+			if data:
+				self.failure_exit("Got junk from mrim.mail.ru: %s" % data)
+			else:
+				self.failure_exit("Can't get address of target server (Connection refused)")
+			return
+		self.mrim_host_port = int(port)
+		self.log(logging.DEBUG, "Got %s:%s" % (self.mrim_host_ip,self.mrim_host_port))
+		self.close()
+		self.state = 'init_done'
+		self.main_connect()
 
 	def recv(self, buffer_size):
 
@@ -86,10 +105,15 @@ class Client(asyncore.dispatcher_with_send):
 
 	def handle_connect(self):
 
-		self._is_connected = True
-		p = protocol.MMPPacket(typ=MRIM_CS_HELLO)
-		self.log(logging.INFO, "Connection OK, sending HELLO")
-		self._send_packet(p)
+		if self.state=='init_done':
+			self.state = 'connection_established'
+			p = protocol.MMPPacket(typ=MRIM_CS_HELLO)
+			self.log(logging.DEBUG, "Connection OK, sending HELLO")
+			self._send_packet(p)
+
+	def failure_exit(self, err):
+
+		self.mmp_handler_connection_close()
 
 	def handle_expt(self):
 
@@ -98,6 +122,9 @@ class Client(asyncore.dispatcher_with_send):
 
 	def handle_read(self):
 
+		if self.state == 'init':
+			self.servportdata = self.recv(1024)
+			return
 		if self.__continue_body:
 			body_part = self.recv(self._blen)
 			self._traff_in += len(body_part)
@@ -108,7 +135,6 @@ class Client(asyncore.dispatcher_with_send):
 			else:
 				self.__continue_body = False
 				self._parse_raw_packet(self._header,self._body)
-		
 		elif self.__continue_header:
 			header_part = self.recv(self._hlen)
 			self._traff_in += len(header_part)
@@ -174,7 +200,7 @@ class Client(asyncore.dispatcher_with_send):
 
 	def handle_close(self):
 
-		self._is_connected = False
+		self.state = 'closed'
 		self.log(logging.INFO, "Connection reset by peer")
 		self.close()
 
@@ -202,14 +228,16 @@ class Client(asyncore.dispatcher_with_send):
 		if ptype == MRIM_CS_HELLO_ACK:
 			self.ping_period = mmp_packet.getBodyAttr('ping_period')
 			self.log(logging.INFO, "Successfully connected")
-			self.log(logging.INFO, "Server version is %s" % mmp_packet.getVersion())
-			self.log(logging.INFO, "Server has set ping period to %d seconds" % self.ping_period)
+			self.log(logging.DEBUG, "Server version is %s" % mmp_packet.getVersion())
+			self.log(logging.DEBUG, "Server has set ping period to %d seconds" % self.ping_period)
 			self._got_hello_ack()
 
 		elif ptype == MRIM_CS_LOGIN_ACK:
 			self.ping()
-			self._is_authorized = True
+			self.state = 'session_established'
 			self.log(logging.INFO, "Authorization successfull: logged in")
+			for p in self.__outbuf:
+				self._send_packet(p)
 			self.mmp_handler_server_authorized()
 
 		elif ptype == MRIM_CS_LOGIN_REJ:
@@ -355,7 +383,8 @@ class Client(asyncore.dispatcher_with_send):
 	def _send_packet(self, p):
 
 		typ = p.getType()
-		if not (self._is_authorized or (typ in [MRIM_CS_HELLO, MRIM_CS_LOGIN2])):
+		if not ((self.state=='session_established') or (typ in [MRIM_CS_HELLO, MRIM_CS_LOGIN2])):
+			self.__outbuf.append(p)
 			return p.getId()
 		if typ!= MRIM_CS_PING:
 			self.log(logging.DEBUG, "Send %s packet (type=%s):\n%s" % 
@@ -365,11 +394,7 @@ class Client(asyncore.dispatcher_with_send):
 		try:
 			self.send(p.__str__())
 		except socket.error, e:
-			if len(e.args)>1:
-				err_txt = e.args[1]
-			else:
-				err_txt = e.args[0]
-			self.log(logging.ERROR, "Socket error has raised while sending data: %s" % err_txt)
+			self.log(logging.ERROR, "Socket error has raised while sending data: %s" % utils.socket_error(e))
 		self.last_ping_time = time.time()
 		self._traff_out += len(p.__str__())
 		return p.getId()
@@ -670,7 +695,7 @@ class Client(asyncore.dispatcher_with_send):
 
 	def mmp_connection_close(self):
 
-		self._is_connected = False
+		self.state = 'closed'
 		try:
 			self.close()
 		except:

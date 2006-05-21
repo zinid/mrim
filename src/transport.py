@@ -39,6 +39,8 @@ class XMPPTransport:
 		self.zombie = Queue.Queue()
 		self.full_stop = threading.Event()
 		self.logger = logger
+		self.dead_jids = {}
+		self.reconnect_buffer = Queue.Queue()
 		self.access_to_file = threading.Semaphore()
 		self.last_version_time = time.strftime('%Y%m%d-%H%M')
 		self.server_features = [
@@ -83,6 +85,7 @@ class XMPPTransport:
 		utils.start_daemon(self.pinger, (), 'pinger')
 		utils.start_daemon(self.composing, (), 'composing')
 		if conf.reconnect:
+			utils.start_daemon(self.reconnect_timer, (), 'reconnect_timer')
 			utils.start_daemon(self.reanimator, (), 'reanimator')
 		utils.start_daemon(self.asyncore_watcher, (), 'asyncore_watcher')
 
@@ -101,7 +104,11 @@ class XMPPTransport:
 		utils.start_daemon(self.iq_handler, (stanza,))
 
 	def daemon_presence_handler(self, conn, stanza):
-		utils.start_daemon(self.presence_handler, (stanza,))
+		#utils.start_daemon(self.presence_handler, (stanza,))
+		try:
+			self.presence_handler(stanza)
+		except:
+			traceback.print_exc()
 
 	def daemon_message_handler(self, conn, stanza):
 		utils.start_daemon(self.message_handler, (stanza,))
@@ -860,7 +867,6 @@ class XMPPTransport:
 		offline = xmpp.Presence(to=jid_from, frm=self.name,typ='unavailable')
 		if mmp_conn:
 			if [jid_from.getResource()] != self.pool.getResources(jid_from):
-				self.conn.send(offline)
 				mmp_conn.broadcast_offline(jid_from)
 				self.pool.pop(jid_from)
 			else:
@@ -956,7 +962,7 @@ class XMPPTransport:
 		body = message.getBody()
 		x = message.getTag('x')
 		mmp_conn = self.pool.get(jid_from)
-		if not (mmp_conn and mmp_conn._is_authorized):
+		if not mmp_conn:
 			if body:
 				err = xmpp.ERR_REGISTRATION_REQUIRED
 				txt = i18n.NOT_CONNECTED
@@ -1001,8 +1007,8 @@ class XMPPTransport:
 		if mmp_conn:
 			status = utils.show2status(show)
 			mmp_conn.current_status = status
-			if mmp_conn._is_authorized:
-				mmp_conn.mmp_change_status(status)
+			mmp_conn.mmp_change_status(status)
+			if mmp_conn.state == 'session_established':
 				if resource not in self.pool.getResources(jid):
 					self.conn.send(xmpp.Presence(frm=self.name,to=jid))
 					mmp_conn.broadcast_online(jid)
@@ -1035,6 +1041,7 @@ class XMPPTransport:
 				return
 		glue.MMPConnection(user,password,self.conn,
 			jid,init_status,self.pool,self.zombie,iq_register,self.logger)
+		#utils.start_daemon(mmp_conn.run, ())
 
 	def send_not_implemented(self, iq):
 		if iq.getType() in ['set','get']:
@@ -1062,6 +1069,7 @@ class XMPPTransport:
 		for mmp_conn in self.pool.getConnections():
 			mmp_conn.exit(notify)
 		self.zombie.put(None)
+		self.reconnect_buffer.put(None)
 		self.full_stop.set()
 
 	def start_all_connections(self):
@@ -1108,12 +1116,36 @@ class XMPPTransport:
 						connection.mmp_send_typing_notify(u)
 			time.sleep(sleep_secs)
 
-	def reanimator(self):
+	def reconnect_timer(self):
 		probe = xmpp.Presence(frm=conf.name,typ='probe')
 		while 1:
-			dead_jid = self.zombie.get()
-			if dead_jid:
-				probe.setTo(xmpp.JID(dead_jid).getStripped())
-				self.conn.send(probe)
+			buf = self.reconnect_buffer.get()
+			if buf:
+				while self.dead_jids:
+					for jid, v in self.dead_jids.items():
+						t, sl = v
+						if (time.time()-t) > sl:
+							probe.setTo(xmpp.JID(jid).getStripped())
+							self.conn.send(probe)
+							try:
+								self.dead_jids.pop(jid)
+							except:
+								pass
+					time.sleep(1)
+			else:
+				break
+
+	def reanimator(self):
+		while 1:
+			s = self.zombie.get()
+			if s:
+				jid, mail, when = s
+				if when == 'now':
+					sl = random.choice(xrange(1,10))
+				elif when == 'after':
+					sl = 60
+				self.logger.info("[%s] Reconnect over %s seconds" % (mail, sl))
+				self.dead_jids[jid] = (time.time(), sl)
+				self.reconnect_buffer.put('start')
 			else:
 				break

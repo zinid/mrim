@@ -55,3 +55,4 @@ USER_HAS_NO_PHONES = "У пользователя нет доступных но
 CONFIGURE_SMS_COMMAND = "Настройка номеров"
 SMS_DELIVERY_STATUS = "Статус доставки SMS на номер "
 INCOMING_SMS = "SMS от "
+REMOTE_SERVER_ERROR = "Сервер Mail.Ru недоступен. Автоматические попытки подключения будут производиться каждые 60 секунд."
