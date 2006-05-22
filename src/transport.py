@@ -165,7 +165,9 @@ class XMPPTransport:
 	def message_handler(self, message):
 		jid_to = message.getTo()
 		jid_to_stripped = jid_to.getStripped()
-		if jid_to_stripped == self.name:
+		if message.getType() == 'error':
+			self.message_error_handler(message)
+		elif jid_to_stripped == self.name:
 			self.message_server_handler(message)
 		else:
 			self.message_user_handler(message)
@@ -932,7 +934,16 @@ class XMPPTransport:
 		self.presence_unsubscribe_handler(presence)
 
 	def presence_error_handler(self, presence):
-		pass
+		jid_from = presence.getFrom()
+		mmp_conn = self.pool.get(jid_from)
+		if mmp_conn:
+			mmp_conn.exit(notify=False)
+
+	def message_error_handler(self, message):
+		jid_from = message.getFrom()
+		mmp_conn = self.pool.get(jid_from)
+		if mmp_conn:
+			self.send_probe(jid_from.getStripped())
 
 	def message_server_handler(self, message):
 		jid_from = message.getFrom()

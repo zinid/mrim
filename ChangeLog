@@ -1,3 +1,7 @@
+2006-05-23  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/transport.py:
+	 Bugfix: message-error and presence-error processing.
+
 2006-05-21  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/core.py, src/glue.py, src/transport.py, src/utils.py, src/i18n.py:
 	 Sockets, threads and reconnects cleanup.
