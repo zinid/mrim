@@ -38,7 +38,7 @@ def daemonize():
 			print >>sys.stderr, "fork #2 failed: %d (%s)" % (e.errno, e.strerror)
 			sys.exit(1)
 		if (pid == 0):
-			os.chdir("/")
+			#os.chdir("/")
 			os.umask(0)
 		else:
 			os._exit(0)
@@ -74,6 +74,14 @@ def logger_init():
 	return logger
 
 logger = logger_init()
+
+if conf.pidfile:
+	try:
+		pidfile = open(conf.pidfile, 'w')
+		pidfile.write(`os.getpid()`+'\n')
+		pidfile.close()
+	except IOError, e:
+		logger.critical("PID file I/O error (%s): %s" % (conf.pidfile, e.strerror))
 
 import xmpp
 import transport

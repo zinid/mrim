@@ -1,3 +1,7 @@
+2006-06-04  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/init.py, src/mrim.py:
+	 Bugfix: PID file must be created after fork() // `man fork` rules! :)
+
 2006-05-23  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/transport.py:
 	 Bugfix: message-error and presence-error processing.

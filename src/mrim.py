@@ -43,13 +43,5 @@ if pid:
 	conf.pidfile = pid
 
 if __name__ == "__main__":
-	if conf.pidfile:
-		try:
-			pidfile = open(conf.pidfile, 'w')
-			pidfile.write(`os.getpid()`+'\n')
-			pidfile.close()
-		except IOError, e:
-			print "PID file I/O error (%s): %s" % (conf.pidfile, e.strerror)
-			sys.exit(1)
 	import init
 	init.start()
