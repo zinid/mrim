@@ -273,8 +273,9 @@ class MMPConnection(core.Client):
 	def mmp_handler_got_subscribe(self, e_mail, name, txt, offtime):
 		
 		subscribe = xmpp.Presence(frm=utils.mail2jid(e_mail),typ='subscribe')
-		if name:
-			subscribe.addChild(name='nick',payload=[name],namespace=xmpp.NS_NICK)
+		if not name:
+			name = e_mail
+		subscribe.addChild(name='nick',payload=[name],namespace=xmpp.NS_NICK)
 		if offtime:
 			stamp = time.strftime('%Y%m%dT%H:%M:%S', offtime)
 			delay = xmpp.Node('x', attrs={'xmlns':xmpp.NS_DELAY, 'from':conf.name})
