@@ -1,3 +1,9 @@
+2006-08-30  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/core.py:
+	 Bugfix: close connection on all socket errors.
+	* src/utils.py:
+	 E-mail address validator fix: now emails started with "_" are correct.
+
 2006-06-24  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/glue.py, src/utils.py:
 	 User Nickname bugfix.

@@ -394,7 +394,7 @@ class Client(asyncore.dispatcher_with_send):
 		try:
 			self.send(p.__str__())
 		except socket.error, e:
-			self.log(logging.ERROR, "Socket error has raised while sending data: %s" % utils.socket_error(e))
+			self.failure_exit(utils.socket_error(e))
 		self.last_ping_time = time.time()
 		self._traff_out += len(p.__str__())
 		return p.getId()

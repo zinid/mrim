@@ -18,7 +18,7 @@ import cStringIO
 conf = mrim.conf
 ENCODING = 'utf-8'
 mail_pattern = re.compile(
-	'[a-zA-Z0-9][a-zA-Z0-9_.-]{0,15}@(mail\.ru|inbox\.ru|bk\.ru|list\.ru|corp\.mail\.ru)$'
+	'[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,15}@(mail\.ru|inbox\.ru|bk\.ru|list\.ru|corp\.mail\.ru)$'
 )
 password_pattern = re.compile('[\040-\176]{4,}$')
 number_pattern = re.compile('[0-9]+$')
