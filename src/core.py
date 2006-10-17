@@ -274,7 +274,7 @@ class Client(asyncore.dispatcher_with_send):
 			subject = utils.win2str(mmp_packet.getBodyAttr('subject'))
 			unix_time = mmp_packet.getBodyAttr('unix_time')
 			email_key = mmp_packet.getBodyAttr('key')
-			utils.start_daemon(self._got_new_mail, (n,sender,subject,unix_time,email_key))
+			self._got_new_mail(n,sender,subject,unix_time,email_key)
 		
 		elif ptype == MRIM_CS_MAILBOX_STATUS_OLD:
 			status = mmp_packet.getBodyAttr('status')
@@ -285,7 +285,7 @@ class Client(asyncore.dispatcher_with_send):
 			unread = mmp_packet.getBodyAttr('unread')
 			nickname = mmp_packet.getBodyAttr('nickname')
 			self.myname = utils.win2str(nickname)
-			utils.start_daemon(self._got_mbox_status, (total, unread))
+			self._got_mbox_status(total, unread)
 
 		elif ptype == MRIM_CS_USER_STATUS:
 			if self._got_roster:
