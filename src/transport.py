@@ -891,8 +891,8 @@ class XMPPTransport:
 			if not mmp_conn:
 				return
 			if (e_mail in mmp_conn.contact_list.getEmails()) and \
-			   (not mmp_conn.contact_list.getAuthFlag(e_mail)) \
-			   and (not mmp_conn.contact_list.getUserFlags(e_mail)):
+			       mmp_conn.contact_list.isAuthorized(e_mail) and \
+			       mmp_conn.contact_list.isValidUser(e_mail):
 				subd = xmpp.Presence(frm=jid_to_stripped,to=jid_from_stripped,typ='subscribed')
 				self.conn.send(subd)
 				pres = xmpp.Presence(frm=jid_to_stripped,to=jid_from)

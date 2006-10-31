@@ -149,7 +149,7 @@ class MMPBody(UserDict.UserDict):
 			self['group_id'] = self._read_ul()
 			self['email'] = self._read_lps()
 			self['name'] = self._read_lps()
-			self['UNKNOWN'] = self._read_ul()
+			self['phones'] = self._read_ul()
 			self['text'] = self._read_lps()
 		elif self.typ == MRIM_CS_ADD_CONTACT_ACK:
 			self['status'] = self._read_ul()
@@ -309,7 +309,7 @@ class MMPBody(UserDict.UserDict):
 			self._write_ul(dict['group_id'])
 			self._write_lps(dict['email'])
 			self._write_lps(dict['name'])
-			self._write_ul(dict['UNKNOWN'])
+			self._write_lps(dict['phones'])
 			self._write_lps(dict['text'])
 		elif self.typ == MRIM_CS_ADD_CONTACT_ACK:
 			self._write_ul(dict['status'])
@@ -576,13 +576,16 @@ class ContactList:
 		self.group = {}
 		if packet:
 			self.packet = packet
+			self.users = self.getUsers()
+			self.groups = self.getGroups()
 			i = 0
 			for u in self.packet.getBodyAttr('contacts'):
 				_id = 20+i
-				self.cids[u[2]] = _id
+				if (u[0] & CONTACT_FLAG_SMS):
+					self.cids[u[6]] = _id
+				else:
+					self.cids[u[2]] = _id
 				i += 1
-			self.users = self.getUsers()
-			self.groups = self.getGroups()
 
 	def getGroups(self):
 		d = {}
@@ -593,14 +596,18 @@ class ContactList:
 	def getUsers(self):
 		d = {}
 		for u in self.packet.getBodyAttr('contacts'):
-			d[u[2]] = {
-				'flags':u[0],
-				'group':u[1],
-				'nick':utils.win2str(u[3]),
-				'server_flags':u[4],
-				'status':u[5],
-				'phones':u[6]
+			contact = {
+					'flags':u[0],
+					'group':u[1],
+					'nick':utils.win2str(u[3]),
+					'server_flags':u[4],
+					'status':u[5],
+					'phones':u[6]
 			}
+			if (u[0] & CONTACT_FLAG_SMS):
+				d[u[6]] = contact
+			else:
+				d[u[2]] = contact
 		return d
 
 	def getEmails(self):
@@ -609,6 +616,20 @@ class ContactList:
 	def getUserFlags(self, mail):
 		return self.users[mail]['flags']
 
+	def isValidUser(self, mail):
+		return not (self.isIgnoredUser(mail) or self.isRemovedUser(mail) or self.isSMSNumber(mail))
+
+	def isIgnoredUser(self, mail):
+		flags = self.getUserFlags(mail)
+		return bool(flags & CONTACT_FLAG_IGNORE)
+
+	def isRemovedUser(self, mail):
+		flags = self.getUserFlags(mail)
+		return bool(flags & CONTACT_FLAG_REMOVED)
+
+	def isSMSNumber(self, phone):
+		return utils.is_valid_sms_number(phone)
+
 	def getUserId(self, mail):
 		return self.cids[mail]
 
@@ -616,7 +637,10 @@ class ContactList:
 		self.cids[mail] = _id
 
 	def getUserStatus(self, mail):
-		return self.users[mail]['status']
+		status = 1
+		if utils.is_valid_email(mail):
+			status = self.users[mail]['status']
+		return status
 
 	def setUserStatus(self, mail, status):
 		self.users[mail]['status'] = status
@@ -626,6 +650,9 @@ class ContactList:
 
 	def setAuthFlag(self, mail, flag):
 		self.users[mail]['server_flags'] = flag
+
+	def isAuthorized(self, mail):
+		return not bool(self.getAuthFlag(mail) & 0x1)
 
 	def getUserGroup(self, mail):
 		return self.users[mail]['group']

@@ -209,9 +209,7 @@ class MMPConnection(core.Client):
 	def mmp_handler_got_contact_list2(self):
 
 		for e_mail in self.contact_list.getEmails():
-			#if self.contact_list.getAuthFlag(e_mail):
-			#	continue
-			if not self.contact_list.getUserFlags(e_mail):
+			if self.contact_list.isValidUser(e_mail):
 				nickname = self.contact_list.getUserNick(e_mail)
 				if not nickname:
 					nickname = e_mail
@@ -334,17 +332,12 @@ class MMPConnection(core.Client):
 		self.send_stanza(msg, self.jid)
 
 	def mmp_handler_got_new_mail(self, url, number, sender, subject, unix_time):
-		#if number < self.mail_number:
-		#	self.mail_number = number
-		#	return
-		#self.mail_number = number
 		if profile.Options(self.jid).getNewMail()!='1':
 			return
 		ltime = time.strftime('%c', time.localtime(unix_time))
 		xmpp_subject = "Вам пришло новое почтовое сообщение"
 		body = "Отправитель: %s\n" % sender
 		body += "Тема: %s\n" % subject
-		#body += "Дата получения: %s\n" % ltime
 		body += 6*"-"+"\n"
 		body += "Всего непрочитанных писем: %s" % number
 		xoob = xmpp.simplexml.Node('x', attrs={'xmlns':'jabber:x:oob'})

@@ -7,7 +7,7 @@ import re
 import logging
 
 PROGRAM = 'Mrim'
-VERSION = '0.1-svn-20061017'
+VERSION = '0.1-svn-20061031'
 DEFAULTS = {
 	'server':'localhost',
 	'disconame':'Mail.ru IM',

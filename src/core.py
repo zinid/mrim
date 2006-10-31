@@ -612,8 +612,9 @@ class Client(asyncore.dispatcher_with_send):
 
 	def mmp_add_contact(self,e_mail,nick='',status=0,ackf=None,acka={}):
 
-		if (e_mail in self.contact_list.getEmails()) \
-		   and (not self.contact_list.getUserFlags(e_mail)):
+		if (e_mail in self.contact_list.getEmails()) and not \
+			   (self.contact_list.isIgnoredUser(e_mail) or \
+			    self.contact_list.isRemovedUser(e_mail)):
 			return
 		if not nick:
 			nick = e_mail
@@ -623,7 +624,7 @@ class Client(asyncore.dispatcher_with_send):
 			'group_id': 0,
 			'email': e_mail,
 			'name': enc_nick,
-			'UNKNOWN':0,
+			'phones': '',
 			'text':utils.encode_auth_string(self.myname,' ')
 		}
 		p = protocol.MMPPacket(typ=MRIM_CS_ADD_CONTACT,dict=d)
@@ -638,8 +639,9 @@ class Client(asyncore.dispatcher_with_send):
 
 	def mmp_add_contact_with_search(self,e_mail,ackf=None,acka={}):
 
-		if (e_mail in self.contact_list.getEmails()) \
-		   and (not self.contact_list.getUserFlags(e_mail)):
+		if (e_mail in self.contact_list.getEmails()) and not \
+			   (self.contact_list.isIgnoredUser(e_mail) or \
+			    self.contact_list.isRemovedUser(e_mail)):
 			return
 		try:
 			user,domain = e_mail.split('@')
@@ -659,9 +661,10 @@ class Client(asyncore.dispatcher_with_send):
 			contact_id = self.contact_list.getUserId(e_mail)
 			name = self.contact_list.getUserNick(e_mail)
 			phones = self.contact_list.getPhones(e_mail)
+			flags = self.contact_list.getUserFlags(e_mail) | 0x1
 			d = {
 				'id':contact_id,
-				'flags':1,
+				'flags': flags,
 				'group_id':0,
 				'contact':e_mail,
 				'name':utils.str2win(name),
@@ -680,9 +683,10 @@ class Client(asyncore.dispatcher_with_send):
 			name = self.contact_list.getUserNick(e_mail)
 			phones = ','.join(numbers)
 			group_id = self.contact_list.getUserGroup(e_mail)
+			flags = self.contact_list.getUserFlags(e_mail)
 			d = {
 				'id':contact_id,
-				'flags':0,
+				'flags': flags,
 				'group_id':group_id,
 				'contact':e_mail,
 				'name':utils.str2win(name),
