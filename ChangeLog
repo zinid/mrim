@@ -1,3 +1,7 @@
+2006-11-01  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/protocol.py:
+	 Bugfix.
+
 2006-10-31  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/core.py, src/glue.py, src/mmptypes.py, src/protocol.py, src/transport.py:
 	 Contact list flags parsing fix.

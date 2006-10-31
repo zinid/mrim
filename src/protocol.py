@@ -628,7 +628,7 @@ class ContactList:
 		return bool(flags & CONTACT_FLAG_REMOVED)
 
 	def isSMSNumber(self, phone):
-		return utils.is_valid_sms_number(phone)
+		return not utils.is_valid_email(phone)
 
 	def getUserId(self, mail):
 		return self.cids[mail]
