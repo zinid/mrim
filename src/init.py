@@ -1,6 +1,5 @@
 import mrim
 import signal
-import urllib2
 import time
 import sys
 import traceback
@@ -9,11 +8,6 @@ import os
 import re
 
 conf = mrim.conf
-
-if conf.http_proxy:
-	proxy = urllib2.ProxyHandler({"http" : conf.http_proxy})
-	opener = urllib2.build_opener(proxy)
-	urllib2.install_opener(opener)
 
 class LogFile:
 	def __init__(self):
@@ -123,6 +117,12 @@ def start():
 		except:
 			logger.critical("Looks like psyco is not installed in your system. Psyco acceleration will not be enabled.")
 			pass
+	if conf.http_proxy:
+		try:
+			conf.http_proxy = utils.get_proxy(conf.http_proxy)
+		except:
+			logger.critical("Invalid format of HTTP-proxy. No proxy will be used.")
+			conf.http_proxy = None
 	while 1:
 		try:
 			xmpp_con = transport.XMPPTransport(conf.name,conf.disconame,
