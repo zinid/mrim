@@ -902,7 +902,6 @@ class XMPPTransport(gw.XMPPSocket):
 			self.send_probe(jid_from.getStripped())
 
 	def message_server_handler(self, message):
-		print x
 		jid_from = message.getFrom()
 		jid_from_stripped = jid_from.getStripped()
 		body = message.getBody()
