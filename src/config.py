@@ -6,8 +6,9 @@ import os
 import re
 import logging
 
+COPYRIGHT = 'Copyright (c) 2005-2007 Jabber.Ru'
 PROGRAM = 'Mrim'
-VERSION = '0.1-svn-20061101'
+VERSION = '0.2-svn-20061227'
 DEFAULTS = {
 	'server':'localhost',
 	'disconame':'Mail.ru IM',
@@ -47,6 +48,7 @@ class Config:
 		open(self.config_file).close()
 		config = ConfigParser.SafeConfigParser(DEFAULTS)
 		config.read([self.config_file])
+		self.copyright = COPYRIGHT
 		self.name = config.get('main', 'name')
 		self.disconame = config.get('main', 'disconame')
 		self.server = config.get('main', 'server')
@@ -100,5 +102,4 @@ class Config:
 				ver_os = 'Windows'
 		else:
 			ver_os = sys.platform
-		#return '%s (%s)' % (ver_python, ver_os)
 		return ver_os
