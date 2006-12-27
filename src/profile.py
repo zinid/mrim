@@ -3,7 +3,6 @@
 import utils
 import xmpp
 import os
-import threading
 import traceback
 import time
 import mrim
@@ -21,7 +20,6 @@ def is_registered(jid, spool=conf.profile_dir):
 class Profile:
 
 	def __init__(self, jid, spool=conf.profile_dir):
-		self.access = threading.Semaphore()
 		self.spool = spool
 		self.jid = xmpp.JID(jid).getStripped()
 		self.file = os.path.join(self.spool, self.jid+'.xdb')
@@ -36,11 +34,9 @@ class Profile:
 		}
 
 		if os.path.exists(self.file):
-			self.access.acquire()
 			fd = open(self.file)
 			self.xdb = xmpp.Node(node=fd.read())
 			fd.close()
-			self.access.release()
 		else:
 			self.xdb = xmpp.Node('xdb')
 			register = xmpp.Node('query', attrs=self.register_ns)
@@ -188,7 +184,6 @@ class Profile:
 			return False
 
 	def flush(self):
-		self.access.acquire()
 		try:
 			s = self.xdb.__str__(fancy=1).encode('utf-8', 'replace')
 		except:
@@ -198,22 +193,18 @@ class Profile:
 		fd.write('<?xml version="1.0" encoding="utf-8"?>\n')
 		fd.write(s)
 		fd.close()
-		self.access.release()
 
 class Options:
 
 	def __init__(self, jid, spool=conf.profile_dir):
-		self.access = threading.Semaphore()
 		self.spool = spool
 		self.jid = xmpp.JID(jid).getStripped()
 		self.file = os.path.join(self.spool, self.jid+'.cfg')
 
 		if os.path.exists(self.file):
-			self.access.acquire()
 			fd = open(self.file)
 			self.cfg = xmpp.Node(node=fd.read())
 			fd.close()
-			self.access.release()
 		else:
 			self.cfg = xmpp.Node('options')
 
@@ -244,7 +235,6 @@ class Options:
 		return True
 
 	def flush(self):
-		self.access.acquire()
 		try:
 			s = self.cfg.__str__(fancy=1).encode('utf-8', 'replace')
 		except:
@@ -254,4 +244,3 @@ class Options:
 		fd.write('<?xml version="1.0" encoding="utf-8"?>\n')
 		fd.write(s)
 		fd.close()
-		self.access.release()

@@ -1,4 +1,3 @@
-import threading
 import random
 import sys
 import types
@@ -97,17 +96,6 @@ except:
 
 	def pretty_xml(xml_string):
 		return xml_string
-
-def start_daemon(func, variables, thread_name=''):
-	if thread_name:
-		daemon = threading.Thread(target=func, args=variables, name=thread_name)
-	else:
-		daemon = threading.Thread(target=func, args=variables)
-	daemon.setDaemon(True)
-	daemon.start()
-	daemon_name = daemon.getName()
-	#if daemon_name != 'asyncore_loop':
-	#	print "Thread %s has started" % daemon_name
 
 def is_valid_email(mail):
 	if mail_pattern.match(mail):
@@ -338,3 +326,7 @@ def pack_rtf(s):
 	io_s.seek(0)
 	gzipped = zlib.compress(io_s.read())
 	return base64.encodestring(gzipped).replace('\n','')
+
+def get_proxy(proxy_str):
+	host, port = proxy_str.split('http://')[1].split(':')
+	return (host, int(port))

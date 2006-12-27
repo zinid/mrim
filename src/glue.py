@@ -2,7 +2,6 @@ import protocol
 import core
 from mmptypes import *
 import xmpp
-import asyncore
 import i18n
 import traceback
 import profile
@@ -17,35 +16,31 @@ import socket
 import logging
 import mrim
 import forms
+import async
 
 conf = mrim.conf
 
 class MMPConnection(core.Client):
 
-	def __init__(self, user, password, xmpp_conn, jid, init_status, conn_spool, zombie, iq_register, logger):
+	def __init__(self, user, password, xmpp_conn, jid, init_status, iq_register):
 		self.iq_register = iq_register
 		self.user = user
 		self.password = password
 		self.xmpp_conn = xmpp_conn
-		self.conn_spool = conn_spool
 		self.jid = xmpp.JID(xmpp.JID(jid).getStripped())
-		self.zombie = zombie
 		self.starttime = time.time()
-		self.typing_users = {}
 		self.init_status = utils.show2status(init_status)
 		self.roster_action = {}
 		self.ids = []
+		self.resources = [xmpp.JID(jid).getResource()]
 		self.current_status = self.init_status
 		self.authed_users = []
-		self.mrim_host_ip = ''
 		self.Roster = profile.Profile(self.jid)
-		core.Client.__init__(self,self.user,self.password,logger,
-				agent=conf.agent,status=self.init_status)
-		self.conn_spool.push(jid,self)
-		self.run()
+		core.Client.__init__(self,self.user,self.password,xmpp_conn.logger,
+			                 agent=conf.agent,status=self.init_status,server="localhost",proxy=conf.http_proxy)
 
-	'''def __del__(self):
-		self.log(logging.INFO, "------- Connection closed --------")'''
+	#def __del__(self):
+	#	print "deleting glue.MMPConnection @", self
 
 	def send_stanza(self, stanza, jid=None):
 		typ = stanza.getType()
@@ -56,7 +51,7 @@ class MMPConnection(core.Client):
 			stanza.setTo(jid)
 			self.xmpp_conn.send(stanza)
 		else:
-			for resource in self.conn_spool.getResources(self.jid):
+			for resource in self.getResources():
 				To = xmpp.JID(self.jid)
 				To.setResource(resource)
 				stanza.setTo(To)
@@ -90,31 +85,20 @@ class MMPConnection(core.Client):
 
 		self.failure_exit("Connection has been closed abnormally")
 
-	def handle_close(self):
-
-		if self.state == 'init':
-			self.get_server(self.servportdata)
-		else:
-			self.failure_exit("Connection reset by peer")
-
 	def handle_error(self):
 
 		t, err, tb = sys.exc_info()
 		if t == socket.error:
 			reason = utils.socket_error(err)
-			if self.state == 'init':
-				if reason != 'Broken pipe':
-					self.failure_exit("Can't get address of target server (%s)" % reason)
-			else:
-				self.failure_exit(reason)
 		else:
+			reason = "Unhandled exception"
 			traceback.print_exc()
+		self.failure_exit(reason)
 
 	def exit(self, notify=True):
 		if notify:
 			self.broadcast_offline()
 		self.mmp_connection_close()
-		self.conn_spool.remove(self.jid)
 
 	def failure_exit(self,errtxt):
 		if self.iq_register:
@@ -127,36 +111,24 @@ class MMPConnection(core.Client):
 			self.close()
 		except:
 			pass
-		if self.state == 'session_established':
-			when = 'now'
-		else:
-			when = 'after'
-		if self.state == 'init':
-			self.log(logging.INFO, errtxt)
-		else:
-			self.log(logging.INFO, "Connection error (%s): %s" % (self.mrim_host_ip, errtxt))
-		self.state = 'closed'
-		if conf.reconnect:
-			self.conn_spool.remove(self.jid)
-			self.zombie.put((self.jid, self._login, when))
-		else:
-			self.conn_spool.remove(self.jid)
+		self.log(logging.INFO, "Connection error (%s): %s" % (self.mrim_host, errtxt))
+		timeout = random.choice(xrange(1,10))
+		if self.state != 'session_established' and not self.iq_register:
+			timeout = 60
+			error = xmpp.Presence(to=self.jid, frm=conf.name)
+			error_txt = i18n.REMOTE_SERVER_ERROR
+			self.xmpp_conn.send_error(error,xmpp.ERR_INTERNAL_SERVER_ERROR,error_txt,reply=0)
+		if not self.iq_register:
+			self.xmpp_conn.reconnect_user(self.jid, self.user, timeout)
 
-	def run(self,server=None, port=None):
+	def start(self, server, port):
+		self.mrim_host = server
+		self.mrim_port = port
 		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-		self.log(logging.INFO, "Getting address of target server from mrim.mail.ru:2042")
-		s = server or 'mrim.mail.ru'
-		p = port or 2042
-		try:
-			self.connect((s, p))
-		except socket.error, e:
-			reason = utils.socket_error(e)
-			self.failure_exit("Can't get address of target server (%s)" % reason)
-
-	def main_connect(self):
-		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-		self.log(logging.INFO, "Connecting to %s:%s" % (self.mrim_host_ip,self.mrim_host_port))
-		self.connect((self.mrim_host_ip,self.mrim_host_port))
+		self.log(logging.INFO, "Connecting to %s:%s" % (self.mrim_host,self.mrim_port))
+		self.state = 'wait_for_connect'
+		self.async_connect((self.mrim_host,self.mrim_port))
+		self.connect_timer = self.set_timer(30, "timeout")
 
 	def mmp_handler_server_authorized(self):
 		if self.iq_register:
@@ -431,7 +403,7 @@ class MMPConnection(core.Client):
 			self.xmpp_conn.send_error(msg,err,err_txt)
 
 	def got_full_vcard(self, avatara, typ, album, vcard, msg, mail):
-		jid_from = msg.getTo() #utils.mail2jid(mail)
+		jid_from = msg.getTo()
 		jid_to = msg.getFrom()
 		iq = xmpp.Iq(frm=jid_from,typ='result')
 		iq.setAttr('id', msg.getAttr('id'))
@@ -491,8 +463,6 @@ class MMPConnection(core.Client):
 				self.send_stanza(repl_msg,msg.getFrom())
 
 	def get_vcard(self, mail, mess):
-		'''if mail == conf.name:
-			mail = self._login'''
 		if utils.is_valid_email(mail):
 			user,domain = mail.split('@')
 			d = {
@@ -506,11 +476,7 @@ class MMPConnection(core.Client):
 			self.xmpp_conn.send_error(mess,err,err_txt)
 
 	def anketa2vcard(self, anketa, avatara, ava_typ, album):
-		attributes = {
-			'xmlns':"vcard-temp",
-			#'prodid':"-//HandGen//NONSGML vGen v1.0//EN",
-			#'version':"2.0"
-		}
+		attributes = {'xmlns':"vcard-temp"}
 		e_mail = xmpp.Node('EMAIL')
 		tel = xmpp.Node('TEL')
 		adr = xmpp.Node('ADR')
@@ -525,12 +491,9 @@ class MMPConnection(core.Client):
 		else:
 			vcard.setTagData('NICKNAME', anketa['Username'])
 		try:
-			#bdate = tuple([int(x) for x in anketa['Birthday'].split('-')]+[1 for i in range(9)])[:9]
-			#vcard.setTagData('BDAY', time.strftime('%d %B %Y', bdate)+' г.')
 			vcard.setTagData('BDAY',anketa['Birthday'])
 		except:
 			pass
-			#traceback.print_exc()
 		e_mail.setTagData('INTERNET', '')
 		e_mail.setTagData('USERID', anketa['Username']+'@'+anketa['Domain'])
 		tel.setTagData('HOME', '')
@@ -608,3 +571,14 @@ class MMPConnection(core.Client):
 
 	def uptime(self):
 		return utils.uptime(time.time() - self.starttime)
+
+	def getResources(self):
+		return self.resources
+
+	def delResource(self, resource):
+		if resource in self.resources:
+			self.resources.remove(resource)
+
+	def addResource(self, resource):
+		if resource not in self.resources:
+			self.resources.append(resource)

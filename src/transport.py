@@ -1,3 +1,4 @@
+import async
 import xmpp
 from mmptypes import *
 import utils
@@ -11,13 +12,10 @@ import forms
 import i18n
 import traceback
 import sys
-import threading
 import os
-import asyncore
-import Queue
-import random
 import socket
 import logging
+import gw
 
 xmpp.NS_GATEWAY = 'jabber:iq:gateway'
 xmpp.NS_STATS = 'http://jabber.org/protocol/stats'
@@ -26,7 +24,7 @@ xmpp.NS_NICK = 'http://jabber.org/protocol/nick'
 
 conf = mrim.conf
 
-class XMPPTransport:
+class XMPPTransport(gw.XMPPSocket):
 
 	def __init__(self, name, disconame, server, port, password, logger):
 		self.name = name
@@ -34,14 +32,7 @@ class XMPPTransport:
 		self.port = port
 		self.server = server
 		self.password = password
-		self.conn = xmpp.Component(self.name)
-		self.pool = pool.MMPPool()
-		self.zombie = Queue.Queue()
-		self.full_stop = threading.Event()
 		self.logger = logger
-		self.dead_jids = {}
-		self.reconnect_buffer = Queue.Queue()
-		self.access_to_file = threading.Semaphore()
 		self.last_version_time = time.strftime('%Y%m%d-%H%M')
 		self.server_features = [
 			xmpp.NS_DISCO_INFO,
@@ -67,53 +58,22 @@ class XMPPTransport:
 			xmpp.NS_COMMANDS,
 			xmpp.NS_VCARD
 		]
+		gw.XMPPSocket.__init__(self)
 
 	def run(self):
-		self.conn.connect((self.server,self.port))
-		self.conn.auth(name=self.name, password=self.password)
+		self.start(self.server, self.port, self.name, self.password)
 		self.startup = time.time()
-
-		self.conn.UnregisterDisconnectHandler(self.conn.DisconnectHandler)
-		self.conn.RegisterDefaultHandler(lambda x,y: None)
-		self.conn.RegisterHandler('iq', self.daemon_iq_handler)
-		self.conn.RegisterHandler('presence', self.daemon_presence_handler)
-		self.conn.RegisterHandler('message', self.daemon_message_handler)
-
+		self.RegisterDefaultHandler(lambda x,y: None)
+		self.RegisterHandler('iq',       self.process_iq)
+		self.RegisterHandler('presence', self.process_presence)
+		self.RegisterHandler('message',  self.process_message)
 		self.sform = forms.get_search_form()
 		self.Features = forms.get_disco_features(self.server_ids,self.server_features)
-
-		utils.start_daemon(self.pinger, (), 'pinger')
-		utils.start_daemon(self.composing, (), 'composing')
-		if conf.reconnect:
-			utils.start_daemon(self.reconnect_timer, (), 'reconnect_timer')
-			utils.start_daemon(self.reanimator, (), 'reanimator')
-		utils.start_daemon(self.asyncore_watcher, (), 'asyncore_watcher')
-
-		self.conn.send_error = self.send_error
 		if conf.probe:
 			self.start_all_connections()
+		async.loop(use_poll=True)
 
-		while 1:
-			if self.conn.isConnected():
-				self.conn.Process(1)
-			else:
-				raise IOError("Lost connection to server")
-				self.stop(notify=False)
-
-	def daemon_iq_handler(self, conn, stanza):
-		utils.start_daemon(self.iq_handler, (stanza,))
-
-	def daemon_presence_handler(self, conn, stanza):
-		#utils.start_daemon(self.presence_handler, (stanza,))
-		try:
-			self.presence_handler(stanza)
-		except:
-			traceback.print_exc()
-
-	def daemon_message_handler(self, conn, stanza):
-		utils.start_daemon(self.message_handler, (stanza,))
-
-	def iq_handler(self, iq):
+	def process_iq(self, conn, iq):
 		ns = iq.getQueryNS()
 		typ = iq.getType()
 		if ns == xmpp.NS_REGISTER:
@@ -143,7 +103,7 @@ class XMPPTransport:
 		else:
 			pass
 
-	def presence_handler(self, presence):
+	def process_presence(self, conn, presence):
 		typ = presence.getType()
 		if typ == 'unavailable':
 			self.presence_unavailable_handler(presence)
@@ -162,7 +122,7 @@ class XMPPTransport:
 		elif not typ:
 			self.presence_available_handler(presence)
 
-	def message_handler(self, message):
+	def process_message(self, conn, message):
 		jid_to = message.getTo()
 		jid_to_stripped = jid_to.getStripped()
 		if message.getType() == 'error':
@@ -182,7 +142,7 @@ class XMPPTransport:
 		if jid_to_stripped==self.name and typ=='get' and not node:
 			reply = iq.buildReply(typ='result')
 			reply.setQueryPayload(self.Features)
-			self.conn.send(reply)
+			self.send(reply)
 		elif jid_to_stripped==self.name and typ=='get' and node:
 			self.iq_disco_node_info_handler(iq, node)
 		elif utils.is_valid_email(utils.jid2mail(jid_to_stripped)) and typ=='get':
@@ -197,7 +157,7 @@ class XMPPTransport:
 				feats = forms.get_disco_features(ids, self.item_features)
 				reply = iq.buildReply(typ='result')
 				reply.setQueryPayload(feats)
-				self.conn.send(reply)
+				self.send(reply)
 		else:
 			self.send_not_implemented(iq)
 
@@ -228,7 +188,7 @@ class XMPPTransport:
 					}
 			)
 			reply.getTag('query').addChild(node=command)
-			self.conn.send(reply)
+			self.send(reply)
 		elif utils.is_valid_email(utils.jid2mail(jid_to_stripped)) and typ=='get':
 			if node:
 				self.iq_disco_user_node_items_handler(iq, node)
@@ -241,7 +201,7 @@ class XMPPTransport:
 					}
 				)
 				reply.getTag('query').addChild(node=command)
-				self.conn.send(reply)
+				self.send(reply)
 		else:
 			self.send_not_implemented(iq)
 
@@ -255,7 +215,7 @@ class XMPPTransport:
 			if jid_from_stripped not in conf.admins:
 				self.send_not_implemented(iq)
 				return
-			count = len(self.pool.getJids())
+			count = len(pool.getJids())
 			ids = {
 				'category':'directory',
 				'type':'user',
@@ -268,7 +228,7 @@ class XMPPTransport:
 			reply = iq.buildReply(typ='result')
 			reply.setQueryPayload(forms.get_disco_features(ids,features))
 			reply.setTagAttr('query','node','online')
-			self.conn.send(reply)
+			self.send(reply)
 		elif node==xmpp.NS_COMMANDS:
 			ids = {
 				'category':'automation',
@@ -279,7 +239,7 @@ class XMPPTransport:
 			reply = iq.buildReply(typ='result')
 			reply.setQueryPayload(forms.get_disco_features(ids,features))
 			reply.setTagAttr('query','node',xmpp.NS_COMMANDS)
-			self.conn.send(reply)
+			self.send(reply)
 		elif node in ['mail', 'sms']:
 			if node=='mail':
 				node_name = 'Mail Events'
@@ -297,7 +257,7 @@ class XMPPTransport:
 			reply = iq.buildReply(typ='result')
 			reply.setQueryPayload(forms.get_disco_features(ids,features))
 			reply.setTagAttr('query','node',node)
-			self.conn.send(reply)
+			self.send(reply)
 		else:
 			self.send_not_implemented(iq)
 
@@ -317,7 +277,7 @@ class XMPPTransport:
 			reply = iq.buildReply(typ='result')
 			reply.setQueryPayload(forms.get_disco_features(ids,features))
 			reply.setTagAttr('query','node',xmpp.NS_COMMANDS)
-			self.conn.send(reply)
+			self.send(reply)
 		elif node in ['conf_sms', 'send_sms']:
 			if node=='conf_sms':
 				node_name = 'Configure SMS'
@@ -335,7 +295,7 @@ class XMPPTransport:
 			reply = iq.buildReply(typ='result')
 			reply.setQueryPayload(forms.get_disco_features(ids,features))
 			reply.setTagAttr('query','node',node)
-			self.conn.send(reply)
+			self.send(reply)
 		else:
 			self.send_not_implemented(iq)
 
@@ -349,9 +309,9 @@ class XMPPTransport:
 			items = []
 			reply = iq.buildReply(typ='result')
 			if jid_from_stripped in conf.admins:
-				for jid in self.pool.getJids():
+				for jid in pool.getJids():
 					try:
-						legacy_user = self.pool.get(jid).user
+						legacy_user = pool.get(jid).user
 						item_attrs = {
 							'jid':jid,
 							'name':legacy_user,
@@ -364,7 +324,7 @@ class XMPPTransport:
 				reply.setTagAttr('query','node','online')
 			else:
 				reply.setQueryPayload([])
-			self.conn.send(reply)
+			self.send(reply)
 		elif node==xmpp.NS_COMMANDS:
 			mail_attrs = {'jid':self.name,'node':'mail','name':'Mail Events'}
 			sms_attrs = {'jid':self.name,'node':'sms','name':'Send SMS'}
@@ -373,11 +333,11 @@ class XMPPTransport:
 			reply = iq.buildReply(typ='result')
 			reply.setTagAttr('query','node',xmpp.NS_COMMANDS)
 			reply.setQueryPayload([mail, sms])
-			self.conn.send(reply)
+			self.send(reply)
 		elif node in ['mail', 'sms']:
 			reply = iq.buildReply(typ='result')
 			reply.setTagAttr('query','node',node)
-			self.conn.send(reply)
+			self.send(reply)
 		else:
 			self.send_not_implemented(iq)
 
@@ -395,11 +355,11 @@ class XMPPTransport:
 			reply = iq.buildReply(typ='result')
 			reply.setTagAttr('query','node',xmpp.NS_COMMANDS)
 			reply.setQueryPayload([mail, sms])
-			self.conn.send(reply)
+			self.send(reply)
 		elif node in ['conf_sms', 'send_sms']:
 			reply = iq.buildReply(typ='result')
 			reply.setTagAttr('query','node',node)
-			self.conn.send(reply)
+			self.send(reply)
 		else:
 			self.send_not_implemented(iq)
 
@@ -413,7 +373,7 @@ class XMPPTransport:
 		if (typ=='get') and (jid_to_stripped==self.name) and (not iq_children):
 			repl = iq.buildReply(typ='result')
 			repl.setQueryPayload(self.get_register_form(jid_from_stripped))
-			self.conn.send(repl)
+			self.send(repl)
 		elif typ == 'set' and (jid_to_stripped==self.name) and iq_children:
 			query_tag = iq.getTag('query')
 			if query_tag.getTag('email') and query_tag.getTag('password'):
@@ -436,7 +396,7 @@ class XMPPTransport:
 					text = i18n.UNACCEPTABLE_PASSWORD
 					self.send_error(iq,error,text)
 					return
-				mmp_conn = self.pool.get(jid_from)
+				mmp_conn = pool.get(jid_from)
 				if mmp_conn:
 					mmp_conn.exit()
 				self.mrim_connection_start(jid_from, None, iq)
@@ -446,15 +406,15 @@ class XMPPTransport:
 					profile.Options(jid_from).remove()
 					ok_iq = iq.buildReply(typ='result')
 					ok_iq.setPayload([],add=0)
-					self.conn.send(ok_iq)
+					self.send(ok_iq)
 					unsub = xmpp.Presence(to=jid_from_stripped,frm=self.name)
 					unsub.setType('unsubscribe')
-					self.conn.send(unsub)
+					self.send(unsub)
 					unsub.setType('unsubscribed')
-					self.conn.send(unsub)
+					self.send(unsub)
 				else:
 					pass
-				mmp_conn = self.pool.get(jid_from)
+				mmp_conn = pool.get(jid_from)
 				if mmp_conn:
 					mmp_conn.exit()
 			else:
@@ -463,7 +423,7 @@ class XMPPTransport:
 					pandion_suxx = "Please report to Pandion developers that their client doesn't really support forms and we know it ;)"
 					pandion_error = xmpp.Error(iq,xmpp.ERR_NOT_ACCEPTABLE)
 					pandion_error.getTag('error').setTagData('text', pandion_suxx)
-					self.conn.send(pandion_error)
+					self.send(pandion_error)
 				else:
 					unknown_client_suxx = "Nice try =) Please report to developers that your client doesn't really support forms."
 					self.send_error(iq,error=xmpp.ERR_NOT_ACCEPTABLE,text=unknown_client_suxx)
@@ -481,7 +441,7 @@ class XMPPTransport:
 			query.setTagData('desc', i18n.ENTER_EMAIL)
 			query.setTag('prompt')
 			repl.setPayload([query])
-			self.conn.send(repl)
+			self.send(repl)
 		elif (typ=='set') and (jid_to_stripped==self.name) and iq_children:
 			e_mail = [node.getData() for node in iq_children if node.getName()=='prompt']
 			if len(e_mail) == 1:
@@ -489,7 +449,7 @@ class XMPPTransport:
 				prompt.setData(utils.mail2jid(e_mail[0]))
 				repl = iq.buildReply(typ='result')
 				repl.setQueryPayload([prompt])
-				self.conn.send(repl)
+				self.send(repl)
 			else:
 				self.send_bad_request(iq)
 		else:
@@ -505,11 +465,11 @@ class XMPPTransport:
 			if iq_children:
 				self.send_bad_request(iq)
 			else:
-				mmp_conn = self.pool.get(jid_from)
+				mmp_conn = pool.get(jid_from)
 				if mmp_conn:
 					repl = iq.buildReply(typ='result')
 					repl.setQueryPayload([self.sform])
-					self.conn.send(repl)
+					self.send(repl)
 				else:
 					err = xmpp.ERR_REGISTRATION_REQUIRED
 					txt = i18n.NOT_CONNECTED
@@ -519,7 +479,7 @@ class XMPPTransport:
 				self.send_bad_request(iq)
 			else:
 				proto_dict = forms.workup_search_input(iq)
-				mmp_conn = self.pool.get(jid_from)
+				mmp_conn = pool.get(jid_from)
 				if mmp_conn:
 					mmp_conn.search(proto_dict,iq)
 				else:
@@ -545,7 +505,7 @@ class XMPPTransport:
 				query.setTagData('name', conf.program)
 				query.setTagData('version', conf.version)
 				query.setTagData('os', conf.os)
-				self.conn.send(repl)
+				self.send(repl)
 		elif typ=='result':
 			query = iq.getTag('query')
 			Name = query.getTagData('name') and query.getTagData('name').encode('utf-8', 'replace')
@@ -553,13 +513,11 @@ class XMPPTransport:
 			Os = query.getTagData('os') and query.getTagData('os').encode('utf-8', 'replace')
 			resource = jid_from.getResource().encode('utf-8', 'replace')
 			user = jid_from_stripped.encode('utf-8', 'replace')+'/'+resource
-			self.access_to_file.acquire()
 			fd = open(
 				os.path.join(conf.profile_dir,'version_stats-'+self.last_version_time),'a+'
 			)
 			fd.write("%s\t%s\t%s\t%s\n" % (user, Name, Version, Os))
 			fd.close()
-			self.access_to_file.release()
 		else:
 			self.send_not_implemented(iq)
 
@@ -579,7 +537,7 @@ class XMPPTransport:
 				query.setTagData('tz', T['tz'])
 				query.setTagData('display', T['display'])
 				repl.setPayload([query])
-				self.conn.send(repl)
+				self.send(repl)
 		else:
 			self.send_not_implemented(iq)
 
@@ -594,7 +552,7 @@ class XMPPTransport:
 			else:
 				repl = iq.buildReply(typ='result')
 				repl.getTag('query').setAttr('seconds', int(time.time()-self.startup))
-				self.conn.send(repl)
+				self.send(repl)
 		else:
 			self.send_not_implemented(iq)
 
@@ -604,8 +562,8 @@ class XMPPTransport:
 		jid_from_stripped = jid_from.getStripped()
 		jid_to_stripped = jid_to.getStripped()
 		typ = iq.getType()
-		mmp_conn = self.pool.get(jid_from)
 		if jid_to_stripped!=self.name and typ=='get':
+			mmp_conn = pool.get(jid_from)
 			if mmp_conn:
 				e_mail = utils.jid2mail(jid_to_stripped)
 				mmp_conn.get_vcard(e_mail, iq)
@@ -614,16 +572,13 @@ class XMPPTransport:
 				txt = i18n.NOT_CONNECTED
 				self.send_error(iq,err,txt)
 		elif jid_to_stripped==self.name and typ=='get':
-			'''if mmp_conn:
-				mmp_conn.get_vcard(self.name, iq)
-			else:'''
 			vcard = xmpp.Node('vCard', attrs={'xmlns':xmpp.NS_VCARD})
 			vcard.setTagData('NICKNAME', conf.program)
-			vcard.setTagData('DESC', 'XMPP to Mail.Ru-IM Transport')
+			vcard.setTagData('DESC', 'XMPP to Mail.Ru-IM Transport\n'+conf.copyright)
 			vcard.setTagData('URL', 'http://svn.xmpp.ru/repos/mrim')
 			repl = iq.buildReply(typ='result')
 			repl.setPayload([vcard])
-			self.conn.send(repl)
+			self.send(repl)
 		else:
 			self.send_not_implemented(iq)
 
@@ -642,7 +597,7 @@ class XMPPTransport:
 					if n.getAttr('name') == 'users/online':
 						stat = xmpp.Node('stat', attrs={'units':'users'})
 						stat.setAttr('name','users/online')
-						stat.setAttr('value',len(self.pool.connections.keys()))
+						stat.setAttr('value',len(pool.getConnections()))
 						payload.append(stat)
 					elif n.getAttr('name') == 'users/total':
 						stat = xmpp.Node('stat', attrs={'units':'users'})
@@ -664,7 +619,7 @@ class XMPPTransport:
 			else:
 				iq_repl = iq.buildReply(typ='result')
 				iq_repl.setQueryPayload(payload)
-				self.conn.send(iq_repl)
+				self.send(iq_repl)
 
 	def iq_command_handler(self, iq):
 		jid_from = iq.getFrom()
@@ -684,7 +639,7 @@ class XMPPTransport:
 		if typ=='set' and node=='mail' and jid_to_stripped==self.name:
 			self.process_mail_cmd(iq, jid_from, command, sessionid, action)
 		elif typ=='set' and node in ['sms', 'conf_sms', 'send_sms']:
-			if self.pool.get(jid_from):
+			if pool.get(jid_from):
 				if node=='sms' and jid_to_stripped==self.name:
 					self.process_sms_cmd(iq, jid_from, command, sessionid, action)
 				elif node=='conf_sms' and utils.is_valid_email(utils.jid2mail(jid_to_stripped)):
@@ -707,7 +662,7 @@ class XMPPTransport:
 			])
 			reply = iq.buildReply(typ='result')
 			reply.setPayload([response])
-			self.conn.send(reply)
+			self.send(reply)
 		elif action=='complete' or (not action and sessionid):
 			response = forms.get_cmd_header('completed','mail',sessionid)
 			xdata = iq.getTag('command').getTag('x')
@@ -717,30 +672,30 @@ class XMPPTransport:
 				response.setPayload([note])
 				reply = iq.buildReply(typ='result')
 				reply.setPayload([response])
-				self.conn.send(reply)
+				self.send(reply)
 			else:
 				self.send_bad_request(iq)
 		elif action=='cancel':
 			response = forms.get_cmd_header('canceled','mail',sessionid)
 			reply = iq.buildReply(typ='result')
 			reply.setPayload([response])
-			self.conn.send(reply)
+			self.send(reply)
 		else:
 			self.send_bad_request(iq)
 
 	def process_sms_cmd(self, iq, jid, command, sessionid, action):
-		mmp_conn = self.pool.get(jid)
+		mmp_conn = pool.get(jid)
 		if action=='execute' or (not action and not sessionid):
 			response = forms.get_cmd_header('executing','sms')
 			response.setPayload([forms.gate_sms_form()])
 			reply = iq.buildReply(typ='result')
 			reply.setPayload([response])
-			self.conn.send(reply)
+			self.send(reply)
 		elif action=='cancel':
 			response = forms.get_cmd_header('canceled','sms',sessionid)
 			reply = iq.buildReply(typ='result')
 			reply.setPayload([response])
-			self.conn.send(reply)
+			self.send(reply)
 		elif action=='complete' or (not action and sessionid):
 			response = forms.get_cmd_header('completed','sms',sessionid)
 			xdata = iq.getTag('command').getTag('x')
@@ -753,7 +708,7 @@ class XMPPTransport:
 				response.setPayload([note])
 				reply = iq.buildReply(typ='result')
 				reply.setPayload([response])
-				self.conn.send(reply)
+				self.send(reply)
 			else:
 				self.send_error(iq, xmpp.ERR_BAD_REQUEST, result)
 		else:
@@ -762,7 +717,7 @@ class XMPPTransport:
 	def process_send_sms_cmd(self, iq, jid, command, sessionid, action):
 		jid_to = iq.getTo().getStripped()
 		mail = utils.jid2mail(jid_to)
-		mmp_conn = self.pool.get(jid)
+		mmp_conn = pool.get(jid)
 		if action=='execute' or (not action and not sessionid):
 			err = xmpp.ERR_ITEM_NOT_FOUND
 			if mail in mmp_conn.contact_list.getEmails():
@@ -772,7 +727,7 @@ class XMPPTransport:
 					response.setPayload([forms.user_sms_form(nums)])
 					reply = iq.buildReply(typ='result')
 					reply.setPayload([response])
-					self.conn.send(reply)
+					self.send(reply)
 				else:
 					txt = i18n.USER_HAS_NO_PHONES
 					self.send_error(iq, err, txt)
@@ -783,7 +738,7 @@ class XMPPTransport:
 			response = forms.get_cmd_header('canceled','send_sms',sessionid)
 			reply = iq.buildReply(typ='result')
 			reply.setPayload([response])
-			self.conn.send(reply)
+			self.send(reply)
 		elif action=='complete' or (not action and sessionid):
 			response = forms.get_cmd_header('completed','send_sms',sessionid)
 			xdata = iq.getTag('command').getTag('x')
@@ -796,7 +751,7 @@ class XMPPTransport:
 				response.setPayload([note])
 				reply = iq.buildReply(typ='result')
 				reply.setPayload([response])
-				self.conn.send(reply)
+				self.send(reply)
 			else:
 				self.send_error(iq, xmpp.ERR_BAD_REQUEST, result)
 		else:
@@ -805,7 +760,7 @@ class XMPPTransport:
 	def process_conf_sms_cmd(self, iq, jid, command, sessionid, action):
 		jid_to = iq.getTo().getStripped()
 		mail = utils.jid2mail(jid_to)
-		mmp_conn = self.pool.get(jid)
+		mmp_conn = pool.get(jid)
 		if action=='execute' or (not action and not sessionid):
 			if mail in mmp_conn.contact_list.getEmails():
 				nums = mmp_conn.contact_list.getPhones(mail)
@@ -813,7 +768,7 @@ class XMPPTransport:
 				response.setPayload([forms.conf_sms_form(nums)])
 				reply = iq.buildReply(typ='result')
 				reply.setPayload([response])
-				self.conn.send(reply)
+				self.send(reply)
 			else:
 				err = xmpp.ERR_ITEM_NOT_FOUND
 				txt = i18n.USER_NOT_IN_CLIST
@@ -831,7 +786,7 @@ class XMPPTransport:
 					response.setPayload([note])
 					reply = iq.buildReply(typ='result')
 					reply.setPayload([response])
-					self.conn.send(reply)
+					self.send(reply)
 				else:
 					err = xmpp.ERR_ITEM_NOT_FOUND
 					txt = i18n.USER_NOT_IN_CLIST
@@ -842,7 +797,7 @@ class XMPPTransport:
 			response = forms.get_cmd_header('canceled','conf_sms',sessionid)
 			reply = iq.buildReply(typ='result')
 			reply.setPayload([response])
-			self.conn.send(reply)
+			self.send(reply)
 
 	def presence_available_handler(self, presence):
 		jid_from = presence.getFrom()
@@ -852,7 +807,7 @@ class XMPPTransport:
 		show = presence.getShow()
 		if jid_to_stripped!=self.name:
 			return
-		mmp_conn = self.pool.get(jid_from)
+		mmp_conn = pool.get(jid_from, online=False)
 		if mmp_conn:
 			self.show_status(jid_from, show, mmp_conn)
 		else:
@@ -860,21 +815,22 @@ class XMPPTransport:
 
 	def presence_unavailable_handler(self, presence):
 		jid_from = presence.getFrom()
+		resource = jid_from.getResource()
 		jid_from_stripped = jid_from.getStripped()
 		jid_to = presence.getTo()
 		jid_to_stripped = jid_to.getStripped()
 		if jid_to_stripped!=self.name:
 			return
-		mmp_conn = self.pool.get(jid_from)
+		mmp_conn = pool.get(jid_from, online=False)
 		offline = xmpp.Presence(to=jid_from, frm=self.name,typ='unavailable')
 		if mmp_conn:
-			if [jid_from.getResource()] != self.pool.getResources(jid_from):
+			if [jid_from.getResource()] != mmp_conn.getResources():
 				mmp_conn.broadcast_offline(jid_from)
-				self.pool.pop(jid_from)
+				mmp_conn.delResource(resource)
 			else:
 				mmp_conn.exit()
 		else:
-			self.conn.send(offline)
+			self.send(offline)
 
 	def presence_subscribe_handler(self, presence):
 		'''To be completely rewritten'''
@@ -883,25 +839,25 @@ class XMPPTransport:
 		jid_to = presence.getTo()
 		jid_to_stripped = jid_to.getStripped()
 		if jid_to_stripped==self.name:
-			self.conn.send(xmpp.Presence(frm=self.name,to=jid_from_stripped,typ='subscribed'))
-			self.conn.send(xmpp.Presence(frm=self.name,to=jid_from))
+			self.send(xmpp.Presence(frm=self.name,to=jid_from_stripped,typ='subscribed'))
+			self.send(xmpp.Presence(frm=self.name,to=jid_from))
 		else:
 			e_mail = utils.jid2mail(jid_to_stripped)
-			mmp_conn = self.pool.get(jid_from)
+			mmp_conn = pool.get(jid_from)
 			if not mmp_conn:
 				return
 			if (e_mail in mmp_conn.contact_list.getEmails()) and \
 			       mmp_conn.contact_list.isAuthorized(e_mail) and \
 			       mmp_conn.contact_list.isValidUser(e_mail):
 				subd = xmpp.Presence(frm=jid_to_stripped,to=jid_from_stripped,typ='subscribed')
-				self.conn.send(subd)
+				self.send(subd)
 				pres = xmpp.Presence(frm=jid_to_stripped,to=jid_from)
 				status = mmp_conn.contact_list.getUserStatus(e_mail)
 				if status == STATUS_AWAY:
 					pres.setShow('away')
-					self.conn.send(pres)
+					self.send(pres)
 				elif status == STATUS_ONLINE:
-					self.conn.send(pres)
+					self.send(pres)
 			else:
 				mmp_conn.add_contact(e_mail)
 
@@ -914,7 +870,7 @@ class XMPPTransport:
 			pass
 		else:
 			e_mail = utils.jid2mail(jid_to_stripped)
-			mmp_conn = self.pool.get(jid_from)
+			mmp_conn = pool.get(jid_from)
 			if mmp_conn:
 				mmp_conn.mmp_send_subscribed(e_mail)
 
@@ -925,7 +881,7 @@ class XMPPTransport:
 		jid_to_stripped = jid_to.getStripped()
 		if jid_to_stripped==self.name:
 			return
-		mmp_conn = self.pool.get(jid_from)
+		mmp_conn = pool.get(jid_from)
 		if mmp_conn and mmp_conn._got_roster:
 			e_mail = utils.jid2mail(jid_to_stripped)
 			mmp_conn.del_contact(e_mail)
@@ -935,17 +891,18 @@ class XMPPTransport:
 
 	def presence_error_handler(self, presence):
 		jid_from = presence.getFrom()
-		mmp_conn = self.pool.get(jid_from)
+		mmp_conn = pool.get(jid_from)
 		if mmp_conn:
 			mmp_conn.exit(notify=False)
 
 	def message_error_handler(self, message):
 		jid_from = message.getFrom()
-		mmp_conn = self.pool.get(jid_from)
+		mmp_conn = pool.get(jid_from)
 		if mmp_conn:
 			self.send_probe(jid_from.getStripped())
 
 	def message_server_handler(self, message):
+		print x
 		jid_from = message.getFrom()
 		jid_from_stripped = jid_from.getStripped()
 		body = message.getBody()
@@ -958,12 +915,12 @@ class XMPPTransport:
 	def collect_versions(self):
 		self.last_version_time = time.strftime('%Y%m%d-%H%M')
 		version = xmpp.Iq(frm=conf.name,typ='get',queryNS=xmpp.NS_VERSION)
-		for J in self.pool.getJids():
-			for resource in self.pool.getResources(J):
-				To = xmpp.JID(J)
+		for mmp_conn in pool.getConnections():
+			for resource in mmp_conn.getResources():
+				To = xmpp.JID(mmp_conn.jid)
 				To.setResource(resource)
 				version.setTo(To)
-				self.conn.send(version)
+				self.send(version)
 
 	def message_user_handler(self, message):
 		jid_from = message.getFrom()
@@ -972,7 +929,7 @@ class XMPPTransport:
 		mail_to = utils.jid2mail(jid_to_stripped)
 		body = message.getBody()
 		x = message.getTag('x')
-		mmp_conn = self.pool.get(jid_from)
+		mmp_conn = pool.get(jid_from)
 		if not mmp_conn:
 			if body:
 				err = xmpp.ERR_REGISTRATION_REQUIRED
@@ -980,11 +937,8 @@ class XMPPTransport:
 				self.send_error(message, err, txt)
 		elif body:
 			if len(body)<=65536:
+				mmp_conn.cancel_composing(mail_to)
 				mmp_conn.send_message(mail_to,body,message)
-				try:
-					mmp_conn.typing_users.pop(mail_to)
-				except KeyError:
-					pass
 			else:
 				err = xmpp.ERR_NOT_ACCEPTABLE
 				txt = i18n.MESSAGE_TOO_BIG
@@ -993,12 +947,8 @@ class XMPPTransport:
 		elif x and x.getNamespace()=='jabber:x:event':
 			if x.getTag('composing') and x.getTag('id'):
 				mmp_conn.mmp_send_typing_notify(mail_to)
-				mmp_conn.typing_users[mail_to] = time.time()
 			elif x.getTag('id'):
-				try:
-					mmp_conn.typing_users.pop(mail_to)
-				except KeyError:
-					pass
+				mmp_conn.cancel_composing(mail_to)
 
 	def get_register_form(self, jid):
 		user = profile.Profile(jid).getUsername()
@@ -1013,33 +963,28 @@ class XMPPTransport:
 		else:
 			return [instr,email,passwd]
 
-	def show_status(self, jid, show, mmp_conn=None):
+	def show_status(self, jid, show, mmp_conn):
 		resource = xmpp.JID(jid).getResource()
-		if mmp_conn:
-			status = utils.show2status(show)
-			mmp_conn.current_status = status
-			mmp_conn.mmp_change_status(status)
-			if mmp_conn.state == 'session_established':
-				if resource not in self.pool.getResources(jid):
-					self.conn.send(xmpp.Presence(frm=self.name,to=jid))
-					mmp_conn.broadcast_online(jid)
-				ricochet = xmpp.Presence(frm=self.name)
-				if show in ['dnd', 'xa', 'away']:
-					ricochet.setShow('away')
-				for resource in self.pool.getResources(jid):
-					To = xmpp.JID(jid)
-					To.setResource(resource)
-					ricochet.setTo(To)
-					self.conn.send(ricochet)
+		status = utils.show2status(show)
+		mmp_conn.current_status = status
+		mmp_conn.mmp_change_status(status)
+		if mmp_conn.state == 'session_established':
+			if resource not in mmp_conn.getResources():
+				mmp_conn.addResource(resource)
+				self.send(xmpp.Presence(frm=self.name,to=jid))
+				mmp_conn.broadcast_online(jid)
+			ricochet = xmpp.Presence(frm=self.name)
+			if show in ['dnd', 'xa', 'away']:
+				ricochet.setShow('away')
+			for resource in mmp_conn.getResources():
+				To = xmpp.JID(jid)
+				To.setResource(resource)
+				ricochet.setTo(To)
+				self.send(ricochet)
 		else:
-			pass
-		if resource:
-			self.pool.push(jid)
+			mmp_conn.addResource(resource)
 
 	def mrim_connection_start(self, jid, init_status, iq_register=None):
-		if not self.pool.lock(jid):
-			self.show_status(jid, init_status)
-			return
 		if iq_register:
 			user = iq_register.getTag('query').getTagData('email')
 			password = iq_register.getTag('query').getTagData('password')
@@ -1048,11 +993,8 @@ class XMPPTransport:
 			user = account.getUsername()
 			password = account.getPassword()
 			if not (user and password):
-				self.pool.unlock(jid)
 				return
-		glue.MMPConnection(user,password,self.conn,
-			jid,init_status,self.pool,self.zombie,iq_register,self.logger)
-		#utils.start_daemon(mmp_conn.run, ())
+		glue.MMPConnection(user,password,self,jid,init_status,iq_register).run()
 
 	def send_not_implemented(self, iq):
 		if iq.getType() in ['set','get']:
@@ -1065,98 +1007,41 @@ class XMPPTransport:
 	def send_error(self, stanza, error=xmpp.ERR_FEATURE_NOT_IMPLEMENTED, text='', reply=1):
 		e = xmpp.Error(stanza,error,reply)
 		if text:
-			e.setTagData('error', text)
 			e.getTag('error').setTagData('text', text)
 			e.getTag('error').getTag('text').setAttr('xml:lang','ru-RU')
 		else:
 			e.getTag('error').delChild('text')
-		self.conn.send(e)
+		self.send(e)
 
 	def send_probe(self, jid):
 		probe = xmpp.Presence(frm=self.name,to=jid,typ='probe')
-		self.conn.send(probe)
+		self.send(probe)
 
 	def stop(self, notify=True):
-		for mmp_conn in self.pool.getConnections():
+		for mmp_conn in pool.getConnections(online=False):
 			mmp_conn.exit(notify)
-		self.zombie.put(None)
-		self.reconnect_buffer.put(None)
-		self.full_stop.set()
 
 	def start_all_connections(self):
 		probe = xmpp.Presence(frm=conf.name,typ='probe')
 		users = [f[:f.find('.xdb')] for f in os.listdir(conf.profile_dir) if f.endswith('.xdb')]
 		for user in users:
 			probe.setTo(user)
-			self.conn.send(probe)
+			self.send(probe)
 
-	def asyncore_loop(self):
-		asyncore.loop(1, use_poll=True)
+	def reconnect_user(self, jid, mail, timeout):
+		if conf.reconnect:
+			self.logger.info("[%s] Reconnect over %s seconds" % (mail, timeout))
+			self.set_timer(timeout, ("reconnect", jid))
 
-	def asyncore_watcher(self):
-		while not self.full_stop.isSet():
-			time.sleep(1)
-			current_threads = [tred.getName() for tred in threading.enumerate()]
-			if 'asyncore_loop' not in current_threads:
-				utils.start_daemon(self.asyncore_loop, (), 'asyncore_loop')
+	def handle_timer(self, tref, (typ, jid)):
+		if typ=="reconnect":
+			probe = xmpp.Presence(frm=self.name,to=jid,typ='probe')
+			self.send(probe)
 
-	def pinger(self):
-		sleep_secs = 5
-		while not self.full_stop.isSet():
-			for connection in self.pool.getConnections():
-				ping_period = connection.ping_period
-				last_ping_time = connection.last_ping_time
-				if (time.time() - last_ping_time) > (ping_period - sleep_secs):
-					try:
-						connection.ping()
-					except socket.error, e:
-						if len(e.args)>1:
-							err_txt = e.args[1]
-						else:
-							err_txt = e.args[0]
-							self.logger.error('Pinger error: %s' % err_txt)
-			time.sleep(sleep_secs)
+	def handle_close(self):
+		self.close()
+		self.stop(notify=False)
+		self.logger.critical("Connection to server lost")
 
-	def composing(self):
-		sleep_secs = 5
-		while not self.full_stop.isSet():
-			for connection in self.pool.getConnections():
-				typing_users = connection.typing_users
-				for u,t in typing_users.items():
-					if (time.time()-t)>sleep_secs:
-						connection.mmp_send_typing_notify(u)
-			time.sleep(sleep_secs)
-
-	def reconnect_timer(self):
-		probe = xmpp.Presence(frm=conf.name,typ='probe')
-		while 1:
-			buf = self.reconnect_buffer.get()
-			if buf:
-				while self.dead_jids:
-					for jid, v in self.dead_jids.items():
-						t, sl = v
-						if (time.time()-t) > sl:
-							probe.setTo(xmpp.JID(jid).getStripped())
-							self.conn.send(probe)
-							try:
-								self.dead_jids.pop(jid)
-							except:
-								pass
-					time.sleep(1)
-			else:
-				break
-
-	def reanimator(self):
-		while 1:
-			s = self.zombie.get()
-			if s:
-				jid, mail, when = s
-				if when == 'now':
-					sl = random.choice(xrange(1,10))
-				elif when == 'after':
-					sl = 60
-				self.logger.info("[%s] Reconnect over %s seconds" % (mail, sl))
-				self.dead_jids[jid] = (time.time(), sl)
-				self.reconnect_buffer.put('start')
-			else:
-				break
+	def handle_error(self):
+		traceback.print_exc()

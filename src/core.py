@@ -3,14 +3,13 @@ import protocol
 import utils
 
 import socket
-import asyncore
+import async
 import struct
 import traceback
-import threading
 import time
 import re
 import signal
-import urllib2
+import http
 import errno
 import logging
 import mrim
@@ -25,40 +24,36 @@ for k,v in [(key, locals()[key]) for key in locals().keys() if key.startswith('M
 	num_type[v] = k
 del k,v
 
-class Client(asyncore.dispatcher_with_send):
+class Client(async.dispatcher_with_send):
 
 	def __init__(self, login, password,logger,agent='Python MMP Library 0.1',
-			status=0,server='mrim.mail.ru',port=2042):
+			status=0,server='mrim.mail.ru',port=2042,proxy=None):
 
 		# some initial values
-		self.__server = server
-		self.__port = port
 		self._login = login
 		self.__password = password
 		self.__agent = agent
 		self.__status = status
 		self._got_roster = False
+		self.proxy = proxy
 		self.state = 'init'
 		self._mbox_url = "http://win.mail.ru/cgi-bin/auth?Login=%s&agent=" % self._login
-		self.__composing_container = []
-		self.__continue_body = False
-		self.__continue_header = False
+		self._composers = {}
+		self._compose_to = {}
 		self.contact_list = protocol.ContactList()
-		self._traff_in = 0
-		self._traff_out = 0
 		self.ack_buf = {}
-		self._pings = 0
+		self.pinger_timer = 0
+		self.connect_timer = 0
 		self.ping_period = 30
-		self.mrim_host_ip = ''
-		self.mrim_host_port = 0
-		self.wp_req_pool = []
-		self.last_wp_req_time = time.time()
-		self.last_ping_time = time.time()
-		asyncore.dispatcher_with_send.__init__(self)
+		self.mrim_host = server
+		self.mrim_port = port
+		async.dispatcher_with_send.__init__(self)
 		self.logger = logger
 		self.myname = ''
-		self.servportdata = ''
-		self.__outbuf = []
+		self.wait_for_header = True
+		self.buflen = 44
+		self.recbuf = ''
+		self.balancer_buf = ''
 
 	def log(self, level, message):
 		self.logger.log(level, '[%s] %s' % (self._login, message))
@@ -69,44 +64,9 @@ class Client(asyncore.dispatcher_with_send):
 		dump += "--- end ---"
 		return dump
 
-	def get_server(self, data):
-
-		try:
-			self.mrim_host_ip, port = data.strip().split(':')
-		except:
-			if data:
-				self.failure_exit("Got junk from mrim.mail.ru: %s" % data)
-			else:
-				self.failure_exit("Can't get address of target server (Connection refused)")
-			return
-		self.mrim_host_port = int(port)
-		self.log(logging.DEBUG, "Got %s:%s" % (self.mrim_host_ip,self.mrim_host_port))
-		self.close()
-		self.state = 'init_done'
-		self.main_connect()
-
-	def recv(self, buffer_size):
-
-		try:
-			data = self.socket.recv(buffer_size)
-			if not data:
-				self.handle_close()
-				return ''
-			else:
-				return data
-		except socket.error, why:
-			if why[0] in [errno.ECONNRESET, errno.ENOTCONN, errno.ESHUTDOWN]:
-				self.handle_close()
-				return ''
-			elif why[0] in [errno.EWOULDBLOCK, errno.EAGAIN]:
-				return ''
-			else:
-				raise socket.error, why
-
 	def handle_connect(self):
 
-		if self.state=='init_done':
-			self.state = 'connection_established'
+		if self.state != 'init':
 			p = protocol.MMPPacket(typ=MRIM_CS_HELLO)
 			self.log(logging.DEBUG, "Connection OK, sending HELLO")
 			self._send_packet(p)
@@ -123,59 +83,33 @@ class Client(asyncore.dispatcher_with_send):
 	def handle_read(self):
 
 		if self.state == 'init':
-			self.servportdata = self.recv(1024)
-			return
-		if self.__continue_body:
-			body_part = self.recv(self._blen)
-			self._traff_in += len(body_part)
-			self._body += body_part
-			if len(body_part)<self._blen:
-				self._blen -= len(body_part)
-				return
-			else:
-				self.__continue_body = False
-				self._parse_raw_packet(self._header,self._body)
-		elif self.__continue_header:
-			header_part = self.recv(self._hlen)
-			self._traff_in += len(header_part)
-			self._header += header_part
-			if len(header_part)<self._hlen:
-				self._hlen -= len(header_part)
-				return
-			else:
-				self.__continue_header = False
-				self.__parse_data()
+			self.balancer_buf += self.recv(8192)
 		else:
-			self._header = self.recv(44)
-			self._traff_in += len(self._header)
-			if len(self._header) == 44 and struct.unpack('I',self._header[:4])[0] == CS_MAGIC:
-				self.__parse_data()
-			elif 0 < len(self._header) < 44:
-				self._hlen = len(self._header)
-				self.__continue_header = True
-				self._hlen = 44 - self._hlen
-				return
-			elif len(self._header) >= 44:
-				self.log(logging.WARNING, "Got junk or unexpected continuation of MMP packet")
-				return
+			buf = self.recv(self.buflen)
+			size = len(buf)
+			self.recbuf += buf
+			if 0<size<self.buflen:
+				self.buflen -= size
+			elif size and self.wait_for_header:
+				dlen = struct.unpack('I',self.recbuf[16:20])[0]
+				if dlen:
+					self.buflen = dlen
+					self.wait_for_header = False
+				else:
+					data = self.recbuf
+					self.recbuf = ''
+					self.buflen = 44
+					self._decode_packet(data)
+			elif size:
+				self.wait_for_header = True
+				self.buflen = 44
+				data = self.recbuf
+				self.recbuf = ''
+				self._decode_packet(data)
 
-	def __parse_data(self):
-		self._blen = struct.unpack('I',self._header[16:20])[0]
-		if self._blen: 
-			self._body = self.recv(self._blen)
-			self._traff_in += len(self._body)
-		if self._body:
-			if len(self._body)<self._blen:
-				self.__continue_body = True
-				self._blen -= len(self._body)
-				return
-			else:
-				self._parse_raw_packet(self._header,self._body)
-		else:
-			self._parse_raw_packet(self._header,self._body)
+	def _decode_packet(self, data):
 
-	def _parse_raw_packet(self,header,body):
-
+		header, body = data[:44], data[44:]
 		typ = struct.unpack('I', header[12:16])[0]
 		if typ not in packet_types:
 			ignore_msg = "!!! Ignore unknown MMP packet with type %s !!!\n"  % hex(int(typ))
@@ -187,39 +121,50 @@ class Client(asyncore.dispatcher_with_send):
 			self.log(logging.ERROR, ignore_msg)
 			return
 		log_got_packet = 'Got %s packet (type=%s):\n' % (num_type[typ], hex(int(typ)))
-		try:
-			mmp_packet = protocol.MMPPacket(packet=header+body)
-		except:
-			parse_error = "Can't parse packet - protocol parsing error!\n"
-			parse_error += "Packet dump: %s\n" % (header+body).__repr__()
-			self.log(logging.ERROR, log_got_packet+parse_error)
-			traceback.print_exc()
-			return
+		mmp_packet = protocol.MMPPacket(packet=header+body)
 		self.log(logging.DEBUG, log_got_packet+self.dump_packet(mmp_packet))
-		self._workup_packet(mmp_packet)
+		self._process_packet(mmp_packet)
 
 	def handle_close(self):
 
-		self.state = 'closed'
-		self.log(logging.INFO, "Connection reset by peer")
-		self.close()
-
-	def run(self,server=None, port=None):
-
-		if server and port:
-			ip_port = (server,port)
+		if self.state == 'init':
+			host, port = self.balancer_buf.strip().split(':')
+			port_int = int(port)
+			self.close()
+			self.start(host, port_int)
 		else:
-			ip_port = utils.get_server(self.__server,self.__port)
+			self.failure_exit("Connection reset by peer")
+
+	def handle_timer(self, tref, msg):
+		if msg=='ping':
+			self.ping()
+		elif msg=='timeout':
+			self.failure_exit("Connection timeout")
+		elif len(msg)==2:
+			typ, val = msg
+			if typ=='compose_stop':
+				del self._composers[val]
+				self.mmp_handler_composing_stop(val)
+			elif typ=='compose_send':
+				self.cancel_composing(val)
+				self.mmp_send_typing_notify(val)
+		else:
+			self.log(logging.INFO, "Got unexpected timer message: %s" % msg)
+
+	def run(self):
+
+		ip_port = (self.mrim_host,self.mrim_port)
 		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-		self.log(logging.INFO, "Connecting to %s:%s..." % ip_port)
-		self.connect(ip_port)
+		self.log(logging.INFO, "Obtaining address from balancer at %s:%s" % ip_port)
+		self.async_connect(ip_port)
+		self.connect_timer = self.set_timer(30, "timeout")
 
 	def ping(self):
 
-		self._pings += 1
 		self._send_packet(protocol.MMPPacket(typ=MRIM_CS_PING))
+		self.pinger_timer = self.set_timer(self.ping_period, "ping")
 
-	def _workup_packet(self, mmp_packet):
+	def _process_packet(self, mmp_packet):
 
 		ptype = mmp_packet.getType()
 		msg_id = mmp_packet.getId()
@@ -233,11 +178,10 @@ class Client(asyncore.dispatcher_with_send):
 			self._got_hello_ack()
 
 		elif ptype == MRIM_CS_LOGIN_ACK:
+			self.cancel_timer(self.connect_timer)
 			self.ping()
 			self.state = 'session_established'
 			self.log(logging.INFO, "Authorization successfull: logged in")
-			for p in self.__outbuf:
-				self._send_packet(p)
 			self.mmp_handler_server_authorized()
 
 		elif ptype == MRIM_CS_LOGIN_REJ:
@@ -384,35 +328,14 @@ class Client(asyncore.dispatcher_with_send):
 
 		typ = p.getType()
 		if not ((self.state=='session_established') or (typ in [MRIM_CS_HELLO, MRIM_CS_LOGIN2])):
-			self.__outbuf.append(p)
 			return p.getId()
 		if typ!= MRIM_CS_PING:
 			self.log(logging.DEBUG, "Send %s packet (type=%s):\n%s" % 
 				(num_type[typ],hex(int(typ)), self.dump_packet(p)))
 		else:
 			self.log(logging.DEBUG, "Ping")
-		try:
-			self.send(p.__str__())
-		except socket.error, e:
-			self.failure_exit(utils.socket_error(e))
-		self.last_ping_time = time.time()
-		self._traff_out += len(p.__str__())
+		self.async_send(p.__str__())
 		return p.getId()
-
-	def _typing_notifier(self, user):
-
-		c = 10
-		while c>0:
-			if user not in self.__composing_container:
-				return
-			else:
-				c -= 0.1
-				time.sleep(0.1)
-		try:
-			self.__composing_container.remove(user)
-		except ValueError:
-			return
-		self.mmp_handler_composing_stop(user)
 
 	def _got_hello_ack(self):
 
@@ -459,22 +382,15 @@ class Client(asyncore.dispatcher_with_send):
 					users.append(user)
 			self.mmp_handler_got_sms(frm, users, text, offtime)
 		else:
-			try:
-				self.__composing_container.remove(mess.getFrom())
-			except ValueError:
-				pass
 			self.mmp_handler_got_message(mess, offtime)
 
 	def _parse_typing_notify(self, frm):
 
-		try:
-			self.__composing_container.remove(frm)
-		except ValueError:
-			pass
-		time.sleep(0.2)
+		if self._composers.has_key(frm):
+			tref = self._composers[frm]
+			self.cancel_timer(tref)
+		self._composers[frm] = self.set_timer(10, ("compose_stop", frm))
 		self.mmp_handler_composing_start(frm)
-		self.__composing_container.append(frm)
-		utils.start_daemon(self._typing_notifier, (frm,))
 
 	def _got_mbox_status(self, total, unread):
 
@@ -490,41 +406,23 @@ class Client(asyncore.dispatcher_with_send):
 		}
 		self.mmp_get_mbox_key(ackf=self.mmp_handler_got_new_mail,acka=d)
 
-	def _get_avatar(self, mail, ackf, acka):
+	def process_http_response(self, response):
 		avatara = ''
 		album = ''
 		content_type = None
-		try:
-			user, domain = mail.split('@')
-			url = 'http://avt.foto.mail.ru/%s/%s/_mrimavatar' % (domain.split('.')[0], user)
-			album = 'http://avt.foto.mail.ru/%s/%s/' % (domain.split('.')[0], user)
-			req = urllib2.Request(url)
-			u = urllib2.urlopen(req)
-			content_type = u.headers['Content-Type']
-			buf = u.read()
-			self._traff_in += len(buf)
-			avatara = buf
-		except urllib2.HTTPError, e:
-			if hasattr(e, 'code') and e.code == 404:
-				pass
-			else:
-				http_err = "Can't connect to http://avt.foto.mail.ru (%s)" % e
+		result, [ackf, acka] = response
+		if result[0]=='ok':
+			msg = result[1]
+			content_type = msg.headers['Content-Type']
+			if msg.code == 200:
+				avatara = msg.body
+				album = msg.album
+			elif msg.code != 404:
+				http_err = "Can't connect to http://avt.foto.mail.ru (%s)" % msg.reason
 				self.log(logging.ERROR, http_err)
-		except urllib2.URLError, e:
-			if hasattr(e.reason, 'args') and len(e.reason.args)==2:
-				http_err = "Can't connect to http://avt.foto.mail.ru (%s)" % e.reason.args[1]
-			else:
-				http_err = "Can't connect to http://avt.foto.mail.ru (%s)" % e.reason
+		else:
+			http_err = "Can't connect to http://avt.foto.mail.ru (%s)" % result[1]
 			self.log(logging.ERROR, http_err)
-		except socket.error, e:
-			if len(e.args)>1:
-				err_txt = e.args[1]
-			else:
-				err_txt = e.args[0]
-			http_err = "Can't connect to http://avt.foto.mail.ru (%s)" % err_txt
-			self.log(logging.ERROR, http_err)
-		except:
-			traceback.print_exc()
 		ackf(avatara, content_type, album, **acka)
 
 	def _null_callback(*x, **y):
@@ -538,24 +436,12 @@ class Client(asyncore.dispatcher_with_send):
 			pass
 		return d
 
-	def _send_ws_req(self):
+	def cancel_composing(self, to):
 
-		interval = 2
-		while self.wp_req_pool:
-			T = time.time() - self.last_wp_req_time
-			if T >= interval:
-				try:
-					fields, ackf, acka, add = self.wp_req_pool.pop(0)
-				except IndexError:
-					break
-				msg = protocol.MMPPacket(typ=MRIM_CS_WP_REQUEST,dict=fields)
-				ret_id = msg.getId()
-				if ackf:
-					self.ack_buf[ret_id] = {'add':add,'ackf':ackf,'acka':acka}
-				self._send_packet(msg)
-				self.last_wp_req_time = time.time()
-			else:
-				time.sleep(interval-T)
+		if self._compose_to.has_key(to):
+			tref = self._compose_to[to]
+			del self._compose_to[to]
+			self.cancel_timer(tref)
 
 	def mmp_get_mbox_key(self, ackf=None, acka={}):
 
@@ -566,13 +452,14 @@ class Client(asyncore.dispatcher_with_send):
 
 	def mmp_send_typing_notify(self, to):
 
+		self.cancel_composing(to)
+		self._compose_to[to] = self.set_timer(5, ('compose_send', to))
 		p = protocol.Message(to,flags=[MESSAGE_FLAG_NOTIFY])
 		self._send_packet(p)
 
 	def mmp_send_message(self, to, body, ackf=None, acka={}):
 
 		enc_body = utils.str2win(body)
-		#msg = protocol.Message(to,enc_body)
 		msg = protocol.Message(to,enc_body,flags=[MESSAGE_FLAG_RTF])
 		ret_id = self._send_packet(msg)
 		if ackf:
@@ -580,7 +467,6 @@ class Client(asyncore.dispatcher_with_send):
 
 	def mmp_send_sms(self, to, body, ackf=None, acka={}):
 
-		#enc_body = utils.str2win(body)
 		d = {'UNKNOWN':0, 'number':to, 'text':body}
 		p = protocol.MMPPacket(typ=MRIM_CS_SMS,dict=d)
 		ret_id = self._send_packet(p)
@@ -602,13 +488,14 @@ class Client(asyncore.dispatcher_with_send):
 
 	def mmp_send_wp_request(self, fields, ackf=None, acka={}, add=False):
 
-		self.wp_req_pool.append([fields,ackf,acka,add])
-		if len(self.wp_req_pool) == 1:
-			utils.start_daemon(self._send_ws_req, (), 'anketa')
+		p = protocol.MMPPacket(typ=MRIM_CS_WP_REQUEST,dict=fields)
+		ret_id = self._send_packet(p)
+		if ackf:
+			self.ack_buf[ret_id] = {'add':add,'ackf':ackf,'acka':acka}
 
 	def mmp_send_avatar_request(self, mail, ackf, acka={}):
 
-		utils.start_daemon(self._get_avatar, (mail, ackf, acka))
+		http.GetUrl(self, mail, [ackf, acka], self.proxy).run()
 
 	def mmp_add_contact(self,e_mail,nick='',status=0,ackf=None,acka={}):
 
@@ -699,7 +586,6 @@ class Client(asyncore.dispatcher_with_send):
 
 	def mmp_connection_close(self):
 
-		self.state = 'closed'
 		try:
 			self.close()
 		except:
