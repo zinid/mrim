@@ -37,7 +37,7 @@ class MMPConnection(core.Client):
 		self.authed_users = []
 		self.Roster = profile.Profile(self.jid)
 		core.Client.__init__(self,self.user,self.password,xmpp_conn.logger,
-			                 agent=conf.agent,status=self.init_status,server="localhost",proxy=conf.http_proxy)
+			                 agent=conf.agent,status=self.init_status,proxy=conf.http_proxy)
 
 	#def __del__(self):
 	#	print "deleting glue.MMPConnection @", self
