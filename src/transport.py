@@ -33,6 +33,7 @@ class XMPPTransport(gw.XMPPSocket):
 		self.server = server
 		self.password = password
 		self.logger = logger
+		self.reconnectors = {}
 		self.last_version_time = time.strftime('%Y%m%d-%H%M')
 		self.server_features = [
 			xmpp.NS_DISCO_INFO,
@@ -993,6 +994,11 @@ class XMPPTransport(gw.XMPPSocket):
 			password = account.getPassword()
 			if not (user and password):
 				return
+		try:
+			timer = self.reconnectors.pop(user)
+			self.cancel_timer(timer)
+		except:
+			pass
 		glue.MMPConnection(user,password,self,jid,init_status,iq_register).run()
 
 	def send_not_implemented(self, iq):
@@ -1030,10 +1036,14 @@ class XMPPTransport(gw.XMPPSocket):
 	def reconnect_user(self, jid, mail, timeout):
 		if conf.reconnect:
 			self.logger.info("[%s] Reconnect over %s seconds" % (mail, timeout))
-			self.set_timer(timeout, ("reconnect", jid))
+			self.reconnectors[mail] = self.set_timer(timeout, ("reconnect", jid, mail))
 
-	def handle_timer(self, tref, (typ, jid)):
+	def handle_timer(self, tref, (typ, jid, mail)):
 		if typ=="reconnect":
+			try:
+				del self.reconnectors[mail]
+			except:
+				pass
 			probe = xmpp.Presence(frm=self.name,to=jid,typ='probe')
 			self.send(probe)
 
