@@ -244,7 +244,7 @@ class MoscowTimeZone(datetime.tzinfo):
 		days_to_go = 6 - dt.weekday()
 		if days_to_go:
 			dt += datetime.timedelta(days_to_go)
-			return dt
+		return dt
 
 def msk2utc(t):
 	tz = MoscowTimeZone()
