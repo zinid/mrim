@@ -17,6 +17,7 @@ import logging
 import mrim
 import forms
 import async
+import pool
 
 conf = mrim.conf
 
@@ -38,6 +39,7 @@ class MMPConnection(core.Client):
 		self.Roster = profile.Profile(self.jid)
 		core.Client.__init__(self,self.user,self.password,xmpp_conn.logger,
 			                 agent=conf.agent,status=self.init_status,proxy=conf.http_proxy)
+		pool.add(self.jid, self)
 
 	#def __del__(self):
 	#	print "deleting glue.MMPConnection @", self
@@ -98,6 +100,7 @@ class MMPConnection(core.Client):
 	def exit(self, notify=True):
 		if notify:
 			self.broadcast_offline()
+		pool.rm(self.jid)
 		self.mmp_connection_close()
 
 	def failure_exit(self,errtxt):
@@ -108,6 +111,7 @@ class MMPConnection(core.Client):
 		else:
 			self.broadcast_offline()
 		try:
+			pool.rm(self.jid)
 			self.close()
 		except:
 			pass
