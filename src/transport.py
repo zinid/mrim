@@ -1053,4 +1053,7 @@ class XMPPTransport(gw.XMPPSocket):
 		self.logger.critical("Connection to server lost")
 
 	def handle_error(self):
-		traceback.print_exc()
+		if sys.exc_info()[0]==IOError:
+			self.handle_close()
+		else:
+			traceback.print_exc()

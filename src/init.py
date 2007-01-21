@@ -137,7 +137,7 @@ def start():
 			except OSError:
 				pass
 			logger.critical('Shutdown')
-			sys.exit(0)
+			break
 		except:
 			traceback.print_exc()
 			logger.critical("Connection to server lost")

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import xmpp
 from mmptypes import *
 import utils
@@ -187,7 +189,7 @@ def workup_search_input(mess):
 			d[MRIM_CS_WP_REQUEST_PARAM_BIRTHDAY_MONTH] = value
 		elif k == 'birthday':
 			d[MRIM_CS_WP_REQUEST_PARAM_BIRTHDAY_DAY] = value
-		elif k == 'online' and value == '1':
+		elif k == 'online' and value in ['1', 'true']:
 			d[MRIM_CS_WP_REQUEST_PARAM_ONLINE] = ' '
 	return d
 

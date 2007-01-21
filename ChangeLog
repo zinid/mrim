@@ -1,3 +1,15 @@
+2007-01-21  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/transport.py:
+	 Closing connection to server on IOError.
+	* src/gw.py:
+	 Using async_send() instead of sendall().
+	* src/forms.py:
+	 Bugfix.
+	* src/glue.py:
+	 Added encoding header (needs for Python 2.5).
+	* src/init.py:
+	 Using 'break' instead of sys.exit().
+
 2007-01-01  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/utils.py:
 	 Bugfix in calculation of offline message date.

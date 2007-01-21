@@ -19,6 +19,7 @@ class XMPPSocket(async.dispatcher_with_send, xmpp.Component):
 		self.Connection.pending_data = lambda x: True
 		self.Connection.receive = self.receive
 		async.dispatcher_with_send.__init__(self, sock=self.socket)
+		self.Connection._send = self.async_send
 
 	def handle_read(self):
 		self.Process()
