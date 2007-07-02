@@ -1,4 +1,8 @@
 2007-01-21  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* COPYING:
+	 New license: GPLv3.
+
+2007-01-21  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/transport.py:
 	 Closing connection to server on IOError.
 	* src/gw.py:
