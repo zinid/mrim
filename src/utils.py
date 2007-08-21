@@ -20,7 +20,7 @@ mail_pattern = re.compile(
 	'[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,15}@(mail\.ru|inbox\.ru|bk\.ru|list\.ru|corp\.mail\.ru)$'
 )
 password_pattern = re.compile('[\040-\176]{4,}$')
-number_pattern = re.compile('[0-9]+$')
+number_pattern = re.compile('\+{0,1}[0-9]+$')
 upper_ascii_pattern = re.compile('[\200-\377]+')
 invalid_chars = re.compile(
 	'[\000-\011\013\014\016-\037\202\204-\207\210\211\213\221-\227\230\231\233\271]'
