@@ -2,7 +2,7 @@
 	* src/utils.py, src/i18n.py:
 	 Bugfix: checking sms number was incorrect.
 
-2007-02-07  Evgeniy Khramtsov  <xramtsov@gmail.com>
+2007-07-02  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* COPYING:
 	 New license: GPLv3.
 
