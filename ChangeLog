@@ -1,3 +1,7 @@
+2007-10-11  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* INSTALL:
+	 Update.
+
 2007-08-21  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/utils.py, src/i18n.py:
 	 Bugfix: checking sms number was incorrect.

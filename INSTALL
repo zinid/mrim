@@ -6,7 +6,6 @@
 	3) Command line options.
 	4) Proxy support.
 	5) Hardware requirements.
-	6) Feedback.
 
 
 
@@ -27,7 +26,7 @@ For *nix installations:
 6) Edit mrim.conf (see section 2 of this document).
 7) Check access for
 	a) mrim.mail.ru:2042
-	b) mrimX.mail.ru:2041 (currently X = 1,...,7).
+	b) mrimX.mail.ru:2041 (currently X = 1,...,31).
 	c) avt.foto.mail.ru:80
 	See section 4 of this document if you want to use proxies.
 8) Check permissions on config file, log file and profiles directory.
@@ -150,7 +149,7 @@ Available command line options are:
 
 Mrim tries to connect to
 	a) mrim.mail.ru:2042
-	b) mrimX.mail.ru:2041 (currently X = 1,...,7).
+	b) mrimX.mail.ru:2041 (currently X = 1,...,31).
 	c) avt.foto.mail.ru:80
 However if you don't have direct access to any of this addresses you might want to use proxy servers.
 Mrim gets user avatars from http://avt.foto.mail.ru. If you have available HTTP proxy server,
@@ -162,17 +161,4 @@ For example, Mrim is well tested with tsocks (http://tsocks.sourceforge.net).
 
 	5. Hardware requirements.
 
-As you might know, python eats a lot of cpu and memory. However, cpu is not a bottleneck.
-For example, 233MHz CPU is not a big problem. The main problem is memory usage.
-Recommended RAM (only for Mrim process, not for system entirely!) is:
-	128Mb for less than 50 of online users;
-	256Mb for 100-300 of online users;
-	512Mb for 300-500 of online users;
-
-Please contact me if you run into performance issues.
-
-
-
-	6. Feedback.
-
-There is the public XMPP conference at mrim@conference.jabber.ru.
+Mrim consumes about 100kb of virtual memory per user.
