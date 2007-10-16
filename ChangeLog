@@ -2,6 +2,8 @@
 	* src/async.py:
 	 Linux epoll(4) support based on python-epoll
 	 library (http://sourceforge.net/projects/pyepoll).
+	* src/utils.py, src/protocol.py, INSTALL:
+	 Removed CRLF line terminators.
 
 2007-10-11  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* INSTALL:
