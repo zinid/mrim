@@ -1,3 +1,8 @@
+2007-10-16  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/async.py:
+	 Linux epoll(4) support based on python-epoll
+	 library (http://sourceforge.net/projects/pyepoll).
+
 2007-10-11  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* INSTALL:
 	 Update.

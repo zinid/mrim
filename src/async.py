@@ -46,7 +46,10 @@ many of the difficult problems for you, making the task of building
 sophisticated high-performance network servers and clients a snap.
 """
 
-import select
+try:
+    import epoll as select
+except ImportError:
+    import select
 import socket
 import sys
 import time
