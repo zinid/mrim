@@ -9,18 +9,19 @@ Features:
 	* Mail notifications.
 	* SMS sending/receiving.
 
-Supported JEPs:
+Supported XEPs:
 
-	* Gateway Interaction (JEP-0100)
-	* vcard-temp (JEP-0054) and vCard-Based Avatars (JEP-0153)
-	* Jabber Search (JEP-0055) with Data Forms (JEP-0004)
-	* Message Events ("delivered" and "composing") (JEP-0022)
-	* Delayed Delivery (JEP-0091)
-	* Ad-Hoc Commands (JEP-0050)
-	* User Nickname (JEP-0172)
+	* Gateway Interaction (XEP-0100)
+	* vcard-temp (XEP-0054) and vCard-Based Avatars (XEP-0153)
+	* Jabber Search (XEP-0055) with Data Forms (XEP-0004)
+	* Message Events ("delivered" and "composing") (XEP-0022)
+	* Message Receipts (XEP-0184)
+	* Delayed Delivery (XEP-0091)
+	* Ad-Hoc Commands (XEP-0050)
+	* User Nickname (XEP-0172)
 	* Only for gateway:
-		Entity Time (JEP-0090)
-		Software Version (JEP-0092)
-		Statistics Gathering (JEP-0039)
+		Entity Time (XEP-0090)
+		Software Version (XEP-0092)
+		Statistics Gathering (XEP-0039)
 
 For installation notes refer to INSTALL file.
