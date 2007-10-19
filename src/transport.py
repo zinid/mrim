@@ -21,6 +21,7 @@ xmpp.NS_GATEWAY = 'jabber:iq:gateway'
 xmpp.NS_STATS = 'http://jabber.org/protocol/stats'
 xmpp.NS_ROSTERX = 'http://jabber.org/protocol/rosterx'
 xmpp.NS_NICK = 'http://jabber.org/protocol/nick'
+xmpp.NS_RECEIPTS = 'urn:xmpp:receipts'
 
 conf = mrim.conf
 
@@ -46,7 +47,8 @@ class XMPPTransport(gw.XMPPSocket):
 			xmpp.NS_TIME,
 			xmpp.NS_VERSION,
 			xmpp.NS_LAST,
-			xmpp.NS_GATEWAY
+			xmpp.NS_GATEWAY,
+			xmpp.NS_RECEIPTS
 		]
 		self.server_ids = {
 			'category':'gateway',

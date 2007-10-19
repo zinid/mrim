@@ -436,6 +436,7 @@ class MMPConnection(core.Client):
 
 	def got_message_status(self,status,msg):
 
+		_id = msg.getAttr('id')
 		if status != MESSAGE_DELIVERED:
 			if status == MESSAGE_REJECTED_NOUSER:
 				error_name = xmpp.ERR_ITEM_NOT_FOUND
@@ -453,20 +454,26 @@ class MMPConnection(core.Client):
 				error_name = xmpp.ERR_INTERNAL_SERVER_ERROR
 				error_text = 'Произошла внутренняя ошибка'
 			self.xmpp_conn.send_error(msg,error_name,error_text)
-
-		else:
+		elif _id:
 			x = msg.getTag('x')
-			if x and (x.getNamespace()=='jabber:x:event') \
-			   and (not x.getTag('id')) and x.getTag('delivered'):
+			request = msg.getTag('request')
+			if x or request:
 				repl_msg = xmpp.Message(frm=msg.getTo())
-				id_x = xmpp.Node('x',attrs={'xmlns':'jabber:x:event'})
-				id_x.setTag('delivered')
-				if msg.getAttr('id'):
-					id_x.setTagData('id',msg.getAttr('id'))
-				else:
-					id_x.setTag('id')
-				repl_msg.addChild(node=id_x)
-				self.send_stanza(repl_msg,msg.getFrom())
+				repl_msg.setAttr('id', _id)
+				need_reply = False
+				if x and (x.getNamespace()=='jabber:x:event') \
+			       and (not x.getTag('id')) and x.getTag('delivered'):
+					id_x = xmpp.Node('x',attrs={'xmlns':'jabber:x:event'})
+					id_x.setTag('delivered')
+					id_x.setTagData('id',_id)
+					repl_msg.addChild(node=id_x)
+					need_reply = True
+				if request and (request.getNamespace()==xmpp.NS_RECEIPTS):
+					id_request = xmpp.Node('received', attrs={'xmlns':xmpp.NS_RECEIPTS})
+					repl_msg.addChild(node=id_request)
+					need_reply = True
+				if need_reply:
+					self.send_stanza(repl_msg,msg.getFrom())
 
 	def get_vcard(self, mail, mess):
 		if utils.is_valid_email(mail):

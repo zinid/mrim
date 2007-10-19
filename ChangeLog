@@ -1,3 +1,7 @@
+2007-10-19  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/transport.py, src/glue.py:
+	 Message Receipts support (XEP-0184).
+
 2007-10-16  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/async.py:
 	 Linux epoll(4) support based on python-epoll
