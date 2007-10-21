@@ -20,6 +20,7 @@ Supported XEPs:
 	* Delayed Delivery (XEP-0091 (deprecated) and XEP-0203)
 	* Ad-Hoc Commands (XEP-0050)
 	* User Nickname (XEP-0172)
+	* Entity Capabilities (XEP-0115)
 	* Only for gateway:
 		Last Activity (XEP-0012)
 		Entity Time (XEP-0090 (deprecated) and XEP-0202)

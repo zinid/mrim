@@ -1,9 +1,10 @@
 2007-10-21  Evgeniy Khramtsov  <xramtsov@gmail.com>
-	* src/transport.py, src/glue.py, src/utils.py, README:
+	* src/transport.py, src/glue.py, src/utils.py, src/config.py, README:
 	 Support for Chat State Notifications (XEP-0085).
 	 Support for Entity Time (XEP-0202).
 	 Support for Delayed Delivery (XEP-0203).
 	 Support for XMPP Ping (XEP-0199).
+	 Preliminary support for Entity Capabilities (XEP-0115).
 	* src/gw.py:
 	 xmpppy xml error workaround.
 
