@@ -1,3 +1,7 @@
+2007-10-22  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/transport.py, src/glue.py:
+	 Resource priority support.
+
 2007-10-21  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/transport.py, src/glue.py, src/utils.py, src/config.py, README:
 	 Support for Chat State Notifications (XEP-0085).
