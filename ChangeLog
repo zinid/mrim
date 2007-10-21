@@ -1,3 +1,7 @@
+2007-10-21  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/transport.py, src/glue.py, README:
+	 Support for Chat State Notifications (XEP-0085).
+
 2007-10-19  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/transport.py, src/glue.py, README:
 	 Message Receipts support (XEP-0184).
