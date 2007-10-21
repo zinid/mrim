@@ -21,22 +21,25 @@ import forms
 import async
 import pool
 import config
+import bisect
 
 conf = mrim.conf
 
 class MMPConnection(core.Client):
 
-	def __init__(self, user, password, xmpp_conn, jid, init_status, iq_register):
+	def __init__(self, user, password, xmpp_conn, jid, priority, show, iq_register):
 		self.iq_register = iq_register
 		self.user = user
 		self.password = password
 		self.xmpp_conn = xmpp_conn
 		self.jid = xmpp.JID(xmpp.JID(jid).getStripped())
 		self.starttime = time.time()
-		self.init_status = utils.show2status(init_status)
+		self.init_status = utils.show2status(show)
 		self.roster_action = {}
 		self.ids = []
-		self.resources = [xmpp.JID(jid).getResource()]
+		self.resources = {}
+		self.prios = []
+		self.addResource(xmpp.JID(jid).getResource(), priority, show)
 		self.current_status = self.init_status
 		self.authed_users = []
 		self.Roster = profile.Profile(self.jid)
@@ -53,6 +56,8 @@ class MMPConnection(core.Client):
 			stanza.setTo(self.jid)
 			self.xmpp_conn.send(stanza)
 		elif jid:
+			if stanza.name == 'message' and not jid.getResource():
+				jid = self.getMaxJid()
 			stanza.setTo(jid)
 			self.xmpp_conn.send(stanza)
 		else:
@@ -604,12 +609,48 @@ class MMPConnection(core.Client):
 		return utils.uptime(time.time() - self.starttime)
 
 	def getResources(self):
-		return self.resources
+		return self.resources.keys()
 
 	def delResource(self, resource):
-		if resource in self.resources:
-			self.resources.remove(resource)
+		if self.resources.has_key(resource):
+			del self.resources[resource]
+			for r in self.prios:
+				if r[1] == resource:
+					self.prios.remove(r)
 
-	def addResource(self, resource):
-		if resource not in self.resources:
-			self.resources.append(resource)
+	def updatePriority(self, resource, priority, show):
+		if self.resources.has_key(resource):
+			try:
+				prio = int(priority)
+				for r in self.prios:
+					if r[1] == resource:
+						self.prios.remove(r)
+						bisect.insort(self.prios, (prio, resource, show))
+			except TypeError:
+				pass
+
+	def getMaxPriority(self):
+		return self.prios[-1][0]
+
+	def getMaxResource(self):
+		return self.prios[-1][1]
+
+	def getMaxShow(self):
+		return self.prios[-1][2]
+
+	def getMaxJid(self):
+		jid = xmpp.JID(self.jid)
+		jid.setResource(self.getMaxResource())
+		return jid
+
+	def haveResource(self, resource):
+		return self.resources.has_key(resource)
+
+	def addResource(self, resource, priority, show):
+		if not self.resources.has_key(resource):
+			self.resources[resource] = []
+			try:
+				prio = int(priority)
+			except TypeError:
+				prio = 0
+			bisect.insort(self.prios, (prio, resource, show))

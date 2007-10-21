@@ -379,7 +379,7 @@ class XMPPTransport(gw.XMPPSocket):
 				mmp_conn = pool.get(jid_from)
 				if mmp_conn:
 					mmp_conn.exit()
-				self.mrim_connection_start(jid_from, None, iq)
+				self.mrim_connection_start(jid_from, None, None, iq)
 			elif query_tag.getTag('remove'):
 				account = profile.Profile(jid_from_stripped)
 				if account.remove():
@@ -804,13 +804,14 @@ class XMPPTransport(gw.XMPPSocket):
 		jid_to = presence.getTo()
 		jid_to_stripped = jid_to.getStripped()
 		show = presence.getShow()
+		priority = presence.getPriority()
 		if jid_to_stripped!=self.name:
 			return
 		mmp_conn = pool.get(jid_from, online=False)
 		if mmp_conn:
-			self.show_status(jid_from, show, mmp_conn)
+			self.show_status(jid_from, priority, show, mmp_conn)
 		else:
-			self.mrim_connection_start(jid_from, show)
+			self.mrim_connection_start(jid_from, show, priority)
 
 	def presence_unavailable_handler(self, presence):
 		jid_from = presence.getFrom()
@@ -826,6 +827,11 @@ class XMPPTransport(gw.XMPPSocket):
 			if [jid_from.getResource()] != mmp_conn.getResources():
 				mmp_conn.broadcast_offline(jid_from)
 				mmp_conn.delResource(resource)
+				prio = mmp_conn.getMaxPriority()
+				show = mmp_conn.getMaxShow()
+				res = mmp_conn.getMaxResource()
+				jid_from.setResource(res)
+				self.show_status(jid_from, prio, show, mmp_conn)
 			else:
 				mmp_conn.exit()
 		else:
@@ -968,14 +974,19 @@ class XMPPTransport(gw.XMPPSocket):
 		else:
 			return [instr,email,passwd]
 
-	def show_status(self, jid, show, mmp_conn):
+	def show_status(self, jid, priority, show, mmp_conn):
 		resource = xmpp.JID(jid).getResource()
+		HAVE_RESOURCE = mmp_conn.haveResource(resource)
+		if HAVE_RESOURCE:
+			mmp_conn.updatePriority(resource, priority, show)
+		else:
+			mmp_conn.addResource(resource, priority, show)
+		show = mmp_conn.getMaxShow()
 		status = utils.show2status(show)
 		mmp_conn.current_status = status
 		mmp_conn.mmp_change_status(status)
 		if mmp_conn.state == 'session_established':
-			if resource not in mmp_conn.getResources():
-				mmp_conn.addResource(resource)
+			if not HAVE_RESOURCE:
 				self.send(xmpp.Presence(frm=self.name,to=jid))
 				mmp_conn.broadcast_online(jid)
 			ricochet = xmpp.Presence(frm=self.name)
@@ -986,10 +997,8 @@ class XMPPTransport(gw.XMPPSocket):
 				To.setResource(resource)
 				ricochet.setTo(To)
 				self.send(ricochet)
-		else:
-			mmp_conn.addResource(resource)
 
-	def mrim_connection_start(self, jid, init_status, iq_register=None):
+	def mrim_connection_start(self, jid, show, priority=None, iq_register=None):
 		if iq_register:
 			user = iq_register.getTag('query').getTagData('email')
 			password = iq_register.getTag('query').getTagData('password')
@@ -1004,7 +1013,7 @@ class XMPPTransport(gw.XMPPSocket):
 			self.cancel_timer(timer)
 		except:
 			pass
-		glue.MMPConnection(user,password,self,jid,init_status,iq_register).run()
+		glue.MMPConnection(user,password,self,jid,priority,show,iq_register).run()
 
 	def send_not_implemented(self, iq):
 		if iq.getType() in ['set','get']:
