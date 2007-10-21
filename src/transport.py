@@ -26,6 +26,7 @@ xmpp.NS_RECEIPTS = 'urn:xmpp:receipts'
 xmpp.NS_CHATSTATES = 'http://jabber.org/protocol/chatstates'
 xmpp.NS_NEW_DELAY = 'urn:xmpp:delay'
 xmpp.NS_NEW_TIME = 'urn:xmpp:time'
+xmpp.NS_PING = 'urn:xmpp:ping'
 
 conf = mrim.conf
 
@@ -56,7 +57,8 @@ class XMPPTransport(gw.XMPPSocket):
 			xmpp.NS_CHATSTATES,
 			xmpp.NS_NEW_TIME,
 			xmpp.NS_DELAY,
-			xmpp.NS_NEW_DELAY
+			xmpp.NS_NEW_DELAY,
+			xmpp.NS_PING
 		]
 		self.server_ids = {
 			'category':'gateway',
@@ -111,6 +113,8 @@ class XMPPTransport(gw.XMPPSocket):
 			self.iq_disco_info_handler(iq)
 		elif ns == xmpp.NS_DISCO_ITEMS:
 			self.iq_disco_items_handler(iq)
+		elif iq.getTag('ping') and iq.getTag('ping').getNamespace() == xmpp.NS_PING:
+			self.iq_ping_handler(iq)
 		elif (ns not in self.server_features):
 			self.send_not_implemented(iq)
 		else:
@@ -640,6 +644,18 @@ class XMPPTransport(gw.XMPPSocket):
 				iq_repl = iq.buildReply(typ='result')
 				iq_repl.setQueryPayload(payload)
 				self.send(iq_repl)
+
+	def iq_ping_handler(self, iq):
+		jid_to = iq.getTo()
+		jid_to_stripped = jid_to.getStripped()
+		typ = iq.getType()
+		iq_children = iq.getQueryChildren()
+		if jid_to_stripped==self.name and typ=='get':
+			repl = iq.buildReply(typ='result')
+			repl.setPayload([])
+			self.send(repl)
+		else:
+			self.send_error(iq, xmpp.ERR_SERVICE_UNAVAILABLE)
 
 	def iq_command_handler(self, iq):
 		jid_from = iq.getFrom()

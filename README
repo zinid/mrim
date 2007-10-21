@@ -25,5 +25,6 @@ Supported XEPs:
 		Entity Time (XEP-0090 (deprecated) and XEP-0202)
 		Software Version (XEP-0092)
 		Statistics Gathering (XEP-0039)
+		XMPP Ping (XEP-0199)
 
 For installation notes refer to INSTALL file.
