@@ -20,6 +20,7 @@ import mrim
 import forms
 import async
 import pool
+import config
 
 conf = mrim.conf
 
@@ -81,6 +82,7 @@ class MMPConnection(core.Client):
 			typ, s = utils.status2show(mrim_status)
 			if not typ:
 				p = xmpp.Presence(frm=utils.mail2jid(e_mail))
+				p.setTag('c', namespace=xmpp.NS_CAPS,attrs={'node':'unknown','ver':utils.c_caps_ver()})
 				if s:
 					p.setShow(s)
 				self.send_stanza(p, jid)
@@ -147,6 +149,8 @@ class MMPConnection(core.Client):
 			self.exit(notify=False)
 		subscribe = xmpp.Presence(frm=conf.name,typ='subscribe')
 		online = xmpp.Presence(frm=conf.name)
+		online.setTag('c', namespace=xmpp.NS_CAPS,
+			attrs={'node':config.NODE,'ver':utils.s_caps_ver()})
 		if self.current_status != self.init_status:
 			self.mmp_change_status(self.current_status)
 		typ,show = utils.status2show(self.current_status)
@@ -203,6 +207,9 @@ class MMPConnection(core.Client):
 					p.setType(typ)
 				elif s:
 					p.setShow(s)
+				if not typ:
+					p.setTag('c', namespace=xmpp.NS_CAPS,
+						attrs={'node':'unknown','ver':utils.c_caps_ver()})
 				self.send_stanza(p)
 
 	def mmp_handler_got_message(self, mess, offtime):

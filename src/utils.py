@@ -13,9 +13,48 @@ import mrim
 import zlib
 import base64
 import cStringIO
+import xmpp
+import sha
 
 conf = mrim.conf
 ENCODING = 'utf-8'
+
+xmpp.NS_GATEWAY = 'jabber:iq:gateway'
+xmpp.NS_STATS = 'http://jabber.org/protocol/stats'
+xmpp.NS_ROSTERX = 'http://jabber.org/protocol/rosterx'
+xmpp.NS_NICK = 'http://jabber.org/protocol/nick'
+xmpp.NS_RECEIPTS = 'urn:xmpp:receipts'
+xmpp.NS_CHATSTATES = 'http://jabber.org/protocol/chatstates'
+xmpp.NS_NEW_DELAY = 'urn:xmpp:delay'
+xmpp.NS_NEW_TIME = 'urn:xmpp:time'
+xmpp.NS_PING = 'urn:xmpp:ping'
+xmpp.NS_CAPS = 'http://jabber.org/protocol/caps'
+
+common_features = [
+	xmpp.NS_DISCO_INFO,
+	xmpp.NS_DISCO_ITEMS,
+	xmpp.NS_VCARD,
+	xmpp.NS_COMMANDS,
+	xmpp.NS_CAPS]
+client_features = common_features + [
+	xmpp.NS_RECEIPTS,
+	xmpp.NS_CHATSTATES]
+server_features = common_features + [
+	xmpp.NS_STATS,
+	xmpp.NS_SEARCH,
+	xmpp.NS_REGISTER,
+	xmpp.NS_TIME,
+	xmpp.NS_VERSION,
+	xmpp.NS_LAST,
+	xmpp.NS_GATEWAY,
+	xmpp.NS_NEW_TIME,
+	xmpp.NS_DELAY,
+	xmpp.NS_NEW_DELAY,
+	xmpp.NS_PING]
+
+client_features.sort()
+server_features.sort()
+
 mail_pattern = re.compile(
 	'[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,15}@(mail\.ru|inbox\.ru|bk\.ru|list\.ru|corp\.mail\.ru)$'
 )
@@ -344,3 +383,15 @@ def pack_rtf(s):
 def get_proxy(proxy_str):
 	host, port = proxy_str.split('http://')[1].split(':')
 	return (host, int(port))
+
+def s_caps_ver():
+	s = 'gateway/mrim<'
+	for feature in server_features:
+		s += feature + '<'
+	return base64.encodestring(sha.new(s).digest()).strip()
+
+def c_caps_ver():
+	s = 'client/pc<'
+	for feature in client_features:
+		s += feature + '<'
+	return base64.encodestring(sha.new(s).digest()).strip()

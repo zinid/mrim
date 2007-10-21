@@ -18,16 +18,6 @@ import logging
 import gw
 import xml.parsers.expat
 
-xmpp.NS_GATEWAY = 'jabber:iq:gateway'
-xmpp.NS_STATS = 'http://jabber.org/protocol/stats'
-xmpp.NS_ROSTERX = 'http://jabber.org/protocol/rosterx'
-xmpp.NS_NICK = 'http://jabber.org/protocol/nick'
-xmpp.NS_RECEIPTS = 'urn:xmpp:receipts'
-xmpp.NS_CHATSTATES = 'http://jabber.org/protocol/chatstates'
-xmpp.NS_NEW_DELAY = 'urn:xmpp:delay'
-xmpp.NS_NEW_TIME = 'urn:xmpp:time'
-xmpp.NS_PING = 'urn:xmpp:ping'
-
 conf = mrim.conf
 
 class XMPPTransport(gw.XMPPSocket):
@@ -41,36 +31,11 @@ class XMPPTransport(gw.XMPPSocket):
 		self.logger = logger
 		self.reconnectors = {}
 		self.last_version_time = time.strftime('%Y%m%d-%H%M')
-		self.server_features = [
-			xmpp.NS_DISCO_INFO,
-			xmpp.NS_DISCO_ITEMS,
-			xmpp.NS_STATS,
-			xmpp.NS_COMMANDS,
-			xmpp.NS_VCARD,
-			xmpp.NS_SEARCH,
-			xmpp.NS_REGISTER,
-			xmpp.NS_TIME,
-			xmpp.NS_VERSION,
-			xmpp.NS_LAST,
-			xmpp.NS_GATEWAY,
-			xmpp.NS_RECEIPTS,
-			xmpp.NS_CHATSTATES,
-			xmpp.NS_NEW_TIME,
-			xmpp.NS_DELAY,
-			xmpp.NS_NEW_DELAY,
-			xmpp.NS_PING
-		]
 		self.server_ids = {
 			'category':'gateway',
 			'type':'mrim',
 			'name':self.disconame
 		}
-		self.item_features = [
-			xmpp.NS_DISCO_INFO,
-			xmpp.NS_DISCO_ITEMS,
-			xmpp.NS_COMMANDS,
-			xmpp.NS_VCARD
-		]
 		gw.XMPPSocket.__init__(self)
 
 	def run(self):
@@ -81,7 +46,7 @@ class XMPPTransport(gw.XMPPSocket):
 		self.RegisterHandler('presence', self.process_presence)
 		self.RegisterHandler('message',  self.process_message)
 		self.sform = forms.get_search_form()
-		self.Features = forms.get_disco_features(self.server_ids,self.server_features)
+		self.Features = forms.get_disco_features(self.server_ids, utils.server_features)
 		if conf.probe:
 			self.start_all_connections()
 		async.loop(use_poll=True)
@@ -115,10 +80,8 @@ class XMPPTransport(gw.XMPPSocket):
 			self.iq_disco_items_handler(iq)
 		elif iq.getTag('ping') and iq.getTag('ping').getNamespace() == xmpp.NS_PING:
 			self.iq_ping_handler(iq)
-		elif (ns not in self.server_features):
-			self.send_not_implemented(iq)
 		else:
-			pass
+			self.send_not_implemented(iq)
 
 	def process_presence(self, conn, presence):
 		typ = presence.getType()
@@ -171,7 +134,7 @@ class XMPPTransport(gw.XMPPSocket):
 					'type':'pc',
 					'name':utils.jid2mail(jid_to_stripped)
 				}
-				feats = forms.get_disco_features(ids, self.item_features)
+				feats = forms.get_disco_features(ids, utils.client_features)
 				reply = iq.buildReply(typ='result')
 				reply.setQueryPayload(feats)
 				self.send(reply)
