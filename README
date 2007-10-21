@@ -15,6 +15,7 @@ Supported XEPs:
 	* vcard-temp (XEP-0054) and vCard-Based Avatars (XEP-0153)
 	* Jabber Search (XEP-0055) with Data Forms (XEP-0004)
 	* Message Events ("delivered" and "composing") (XEP-0022)
+	* Chat State Notifications ("active", "composing" and "paused") (XEP-0085)
 	* Message Receipts (XEP-0184)
 	* Delayed Delivery (XEP-0091)
 	* Ad-Hoc Commands (XEP-0050)

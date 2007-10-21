@@ -22,6 +22,7 @@ xmpp.NS_STATS = 'http://jabber.org/protocol/stats'
 xmpp.NS_ROSTERX = 'http://jabber.org/protocol/rosterx'
 xmpp.NS_NICK = 'http://jabber.org/protocol/nick'
 xmpp.NS_RECEIPTS = 'urn:xmpp:receipts'
+xmpp.NS_CHATSTATES = 'http://jabber.org/protocol/chatstates'
 
 conf = mrim.conf
 
@@ -48,7 +49,8 @@ class XMPPTransport(gw.XMPPSocket):
 			xmpp.NS_VERSION,
 			xmpp.NS_LAST,
 			xmpp.NS_GATEWAY,
-			xmpp.NS_RECEIPTS
+			xmpp.NS_RECEIPTS,
+			xmpp.NS_CHATSTATES
 		]
 		self.server_ids = {
 			'category':'gateway',
@@ -930,7 +932,6 @@ class XMPPTransport(gw.XMPPSocket):
 		jid_to_stripped = jid_to.getStripped()
 		mail_to = utils.jid2mail(jid_to_stripped)
 		body = message.getBody()
-		x = message.getTag('x')
 		mmp_conn = pool.get(jid_from)
 		if not mmp_conn:
 			if body:
@@ -945,11 +946,19 @@ class XMPPTransport(gw.XMPPSocket):
 				err = xmpp.ERR_NOT_ACCEPTABLE
 				txt = i18n.MESSAGE_TOO_BIG
 				self.send_error(message, err, txt)
-
-		elif x and x.getNamespace()=='jabber:x:event':
-			if x.getTag('composing') and x.getTag('id'):
+		else:
+			x = message.getTag('x')
+			c = message.getTag('composing')
+			p = message.getTag('paused')
+			HAVE_X_COMPOSING_START = x and x.getNamespace()=='jabber:x:event' \
+			                 and x.getTag('composing') and x.getTag('id')
+			HAVE_X_COMPOSING_STOP = x and x.getNamespace()=='jabber:x:event' \
+			                 and (not x.getTag('composing')) and x.getTag('id')
+			HAVE_COMPOSING = c and c.getNamespace()==xmpp.NS_CHATSTATES
+			HAVE_PAUSED = p and p.getNamespace()==xmpp.NS_CHATSTATES
+			if HAVE_X_COMPOSING_START or HAVE_COMPOSING:
 				mmp_conn.mmp_send_typing_notify(mail_to)
-			elif x.getTag('id'):
+			if HAVE_X_COMPOSING_STOP or HAVE_PAUSED:
 				mmp_conn.cancel_composing(mail_to)
 
 	def get_register_form(self, jid):

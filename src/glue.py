@@ -219,14 +219,17 @@ class MMPConnection(core.Client):
 			msg.setFrom(conf.name)
 		else:
 			msg.setType('chat')
-			xevent = xmpp.simplexml.Node('x', attrs={'xmlns':'jabber:x:event'})
-			xevent.setTag('composing')
-			msg.addChild(node=xevent)
-		if offtime:
-			stamp = time.strftime('%Y%m%dT%H:%M:%S', offtime)
-			delay = xmpp.Node('x', attrs={'xmlns':xmpp.NS_DELAY, 'from':conf.name})
-			delay.setAttr('stamp', stamp)
-			msg.addChild(node=delay)
+			if not offtime:
+				xevent = xmpp.simplexml.Node('x', attrs={'xmlns':'jabber:x:event'})
+				xevent.setTag('composing')
+				active = xmpp.Node('active', attrs={'xmlns':xmpp.NS_CHATSTATES})
+				msg.addChild(node=xevent)
+				msg.addChild(node=active)
+			else:
+				stamp = time.strftime('%Y%m%dT%H:%M:%S', offtime)
+				delay = xmpp.Node('x', attrs={'xmlns':xmpp.NS_DELAY, 'from':conf.name})
+				delay.setAttr('stamp', stamp)
+				msg.addChild(node=delay)
 		self.send_stanza(msg, self.jid)
 
 	def mmp_handler_got_sms(self, number, users, text, offtime):
@@ -284,15 +287,19 @@ class MMPConnection(core.Client):
 		xevent = xmpp.Node('x', attrs={'xmlns':'jabber:x:event'})
 		xevent.setTag('composing')
 		xevent.setTag('id')
+		c = xmpp.Node('composing', attrs={'xmlns':xmpp.NS_CHATSTATES})
 		composing = xmpp.Message(frm=utils.mail2jid(e_mail))
 		composing.addChild(node=xevent)
+		composing.addChild(node=c)
 		self.send_stanza(composing, self.jid)
 
 	def mmp_handler_composing_stop(self, e_mail):
 		xevent = xmpp.simplexml.Node('x', attrs={'xmlns':'jabber:x:event'})
 		xevent.setTag('id')
+		paused = xmpp.Node('paused', attrs={'xmlns':xmpp.NS_CHATSTATES})
 		composing = xmpp.Message(frm=utils.mail2jid(e_mail))
 		composing.addChild(node=xevent)
+		composing.addChild(node=paused)
 		self.send_stanza(composing, self.jid)
 
 	def mmp_handler_got_mbox_status(self, url, total, unread):
