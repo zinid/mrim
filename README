@@ -17,11 +17,12 @@ Supported XEPs:
 	* Message Events ("delivered" and "composing") (XEP-0022)
 	* Chat State Notifications ("active", "composing" and "paused") (XEP-0085)
 	* Message Receipts (XEP-0184)
-	* Delayed Delivery (XEP-0091)
+	* Delayed Delivery (XEP-0091 (deprecated) and XEP-0203)
 	* Ad-Hoc Commands (XEP-0050)
 	* User Nickname (XEP-0172)
 	* Only for gateway:
-		Entity Time (XEP-0090)
+		Last Activity (XEP-0012)
+		Entity Time (XEP-0090 (deprecated) and XEP-0202)
 		Software Version (XEP-0092)
 		Statistics Gathering (XEP-0039)
 

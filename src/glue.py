@@ -226,10 +226,14 @@ class MMPConnection(core.Client):
 				msg.addChild(node=xevent)
 				msg.addChild(node=active)
 			else:
-				stamp = time.strftime('%Y%m%dT%H:%M:%S', offtime)
-				delay = xmpp.Node('x', attrs={'xmlns':xmpp.NS_DELAY, 'from':conf.name})
-				delay.setAttr('stamp', stamp)
-				msg.addChild(node=delay)
+				old_stamp = time.strftime('%Y%m%dT%H:%M:%S', offtime)
+				old_delay = xmpp.Node('x',
+					attrs={'xmlns':xmpp.NS_DELAY, 'from':conf.name, 'stamp':old_stamp})
+				new_stamp = time.strftime('%Y-%m-%dT%H:%M:%SZ', offtime)
+				new_delay = xmpp.Node('delay',
+					attrs={'xmlns':xmpp.NS_NEW_DELAY, 'from':conf.name, 'stamp':new_stamp})
+				msg.addChild(node=old_delay)
+				msg.addChild(node=new_delay)
 		self.send_stanza(msg, self.jid)
 
 	def mmp_handler_got_sms(self, number, users, text, offtime):

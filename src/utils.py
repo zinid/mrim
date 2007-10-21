@@ -276,6 +276,20 @@ def uptime(T):
 	minutes, secs = (s/60, s % 60)
 	return "%s days, %s hours %s minutes %s secs" % (days, hours, minutes, secs)
 
+def xep_202_time():
+	if time.daylight != 0:
+		offset = time.altzone
+	else:
+		offset = time.timezone
+	hours, reminder = divmod(abs(offset), 3600)
+	mins, secs = divmod(reminder, 60)
+	if offset >= 0:
+		tzo = "%.2d:%.2d" % (hours, mins)
+	else:
+		tzo = "-%.2d:%.2d" % (hours, mins)
+	utc = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+	return (tzo, utc)
+
 def show2status(show):
 	if show in [None, 'chat']:
 		status = STATUS_ONLINE

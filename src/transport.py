@@ -23,6 +23,8 @@ xmpp.NS_ROSTERX = 'http://jabber.org/protocol/rosterx'
 xmpp.NS_NICK = 'http://jabber.org/protocol/nick'
 xmpp.NS_RECEIPTS = 'urn:xmpp:receipts'
 xmpp.NS_CHATSTATES = 'http://jabber.org/protocol/chatstates'
+xmpp.NS_NEW_DELAY = 'urn:xmpp:delay'
+xmpp.NS_NEW_TIME = 'urn:xmpp:time'
 
 conf = mrim.conf
 
@@ -50,7 +52,10 @@ class XMPPTransport(gw.XMPPSocket):
 			xmpp.NS_LAST,
 			xmpp.NS_GATEWAY,
 			xmpp.NS_RECEIPTS,
-			xmpp.NS_CHATSTATES
+			xmpp.NS_CHATSTATES,
+			xmpp.NS_NEW_TIME,
+			xmpp.NS_DELAY,
+			xmpp.NS_NEW_DELAY
 		]
 		self.server_ids = {
 			'category':'gateway',
@@ -88,7 +93,9 @@ class XMPPTransport(gw.XMPPSocket):
 		elif ns == xmpp.NS_STATS:
 			self.iq_stats_handler(iq)
 		elif ns == xmpp.NS_TIME:
-			self.iq_time_handler(iq)
+			self.iq_time_handler(iq, 'old')
+		elif iq.getTag('time') and iq.getTag('time').getNamespace() == xmpp.NS_NEW_TIME:
+			self.iq_time_handler(iq, 'new')
 		elif ns == xmpp.NS_LAST:
 			self.iq_last_handler(iq)
 		elif ns == xmpp.NS_SEARCH:
@@ -526,7 +533,7 @@ class XMPPTransport(gw.XMPPSocket):
 		else:
 			self.send_not_implemented(iq)
 
-	def iq_time_handler(self, iq):
+	def iq_time_handler(self, iq, ver):
 		jid_to = iq.getTo()
 		jid_to_stripped = jid_to.getStripped()
 		typ = iq.getType()
@@ -536,12 +543,19 @@ class XMPPTransport(gw.XMPPSocket):
 				self.send_bad_request(iq)
 			else:
 				repl = iq.buildReply(typ='result')
-				query = xmpp.Node('query',attrs={'xmlns':xmpp.NS_TIME})
-				T = utils.gettime()
-				query.setTagData('utc', T['utc'])
-				query.setTagData('tz', T['tz'])
-				query.setTagData('display', T['display'])
-				repl.setPayload([query])
+				if ver=='old':
+					query = xmpp.Node('query',attrs={'xmlns':xmpp.NS_TIME})
+					T = utils.gettime()
+					query.setTagData('utc', T['utc'])
+					query.setTagData('tz', T['tz'])
+					query.setTagData('display', T['display'])
+					repl.setPayload([query])
+				else:
+					_time = xmpp.Node('time',attrs={'xmlns':xmpp.NS_NEW_TIME})
+					T = utils.xep_202_time()
+					_time.setTagData('tzo', T[0])
+					_time.setTagData('utc', T[1])
+					repl.setPayload([_time])
 				self.send(repl)
 		else:
 			self.send_not_implemented(iq)
