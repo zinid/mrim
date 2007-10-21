@@ -29,6 +29,7 @@ class XMPPSocket(async.dispatcher_with_send, xmpp.Component):
 
 	def receive(self):
 		received = self.recv(BUFLEN)
+		received = received.replace('<caps:c', '<c')
 		if received:
 			self.Connection.DEBUG(received,'got')
 			if hasattr(self, 'Dispatcher'):

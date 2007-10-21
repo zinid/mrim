@@ -16,6 +16,7 @@ import os
 import socket
 import logging
 import gw
+import xml.parsers.expat
 
 xmpp.NS_GATEWAY = 'jabber:iq:gateway'
 xmpp.NS_STATS = 'http://jabber.org/protocol/stats'
@@ -1079,6 +1080,8 @@ class XMPPTransport(gw.XMPPSocket):
 
 	def handle_error(self):
 		if sys.exc_info()[0]==IOError:
+			self.handle_close()
+		elif sys.exc_info()[0]==xml.parsers.expat.ExpatError:
 			self.handle_close()
 		else:
 			traceback.print_exc()
