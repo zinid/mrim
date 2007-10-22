@@ -1,3 +1,8 @@
+2007-10-23  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/transport.py, src/glue.py, src/utils.py:
+	 Entity Capabilities caching (full support for XEP-0115).
+	 Presence ricochet optimization.
+
 2007-10-22  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/transport.py, src/glue.py:
 	 Resource priority support.
