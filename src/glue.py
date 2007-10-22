@@ -27,7 +27,7 @@ conf = mrim.conf
 
 class MMPConnection(core.Client):
 
-	def __init__(self, user, password, xmpp_conn, jid, priority, show, iq_register):
+	def __init__(self, user, password, xmpp_conn, jid, priority, show, ver, iq_register):
 		self.iq_register = iq_register
 		self.user = user
 		self.password = password
@@ -39,7 +39,7 @@ class MMPConnection(core.Client):
 		self.ids = []
 		self.resources = {}
 		self.prios = []
-		self.addResource(xmpp.JID(jid).getResource(), priority, show)
+		self.addResource(xmpp.JID(jid).getResource(), priority, show, ver)
 		self.current_status = self.init_status
 		self.authed_users = []
 		self.Roster = profile.Profile(self.jid)
@@ -191,6 +191,8 @@ class MMPConnection(core.Client):
 			p.setType(typ)
 		elif s:
 			p.setShow(s)
+		if not typ:
+			p.setTag('c', namespace=xmpp.NS_CAPS, attrs={'node':'unknown','ver':utils.c_caps_ver()})
 		self.send_stanza(p)
 
 	def mmp_handler_got_contact_list2(self):
@@ -646,11 +648,20 @@ class MMPConnection(core.Client):
 	def haveResource(self, resource):
 		return self.resources.has_key(resource)
 
-	def addResource(self, resource, priority, show):
+	def getResourceCaps(self, resource):
+		if self.resources.has_key(resource):
+			return self.resources[resource]
+		else:
+			return ""
+
+	def addResource(self, resource, priority, show, ver=""):
 		if not self.resources.has_key(resource):
-			self.resources[resource] = []
+			self.resources[resource] = ver
 			try:
 				prio = int(priority)
 			except TypeError:
 				prio = 0
 			bisect.insort(self.prios, (prio, resource, show))
+			to = xmpp.JID(self.jid)
+			to.setResource(resource)
+			self.xmpp_conn.request_caps(ver, to)

@@ -52,9 +52,6 @@ server_features = common_features + [
 	xmpp.NS_NEW_DELAY,
 	xmpp.NS_PING]
 
-client_features.sort()
-server_features.sort()
-
 mail_pattern = re.compile(
 	'[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,15}@(mail\.ru|inbox\.ru|bk\.ru|list\.ru|corp\.mail\.ru)$'
 )
@@ -384,14 +381,23 @@ def get_proxy(proxy_str):
 	host, port = proxy_str.split('http://')[1].split(':')
 	return (host, int(port))
 
-def s_caps_ver():
-	s = 'gateway/mrim<'
-	for feature in server_features:
+def encode_caps_ver(category, typ, features):
+	features.sort()
+	s = 'category/' + typ + '<'
+	for feature in features:
 		s += feature + '<'
 	return base64.encodestring(sha.new(s).digest()).strip()
 
+def decode_caps_ver(ver):
+	try:
+		sha1 = base64.decodestring(ver)
+		if len(sha1) == 20:
+			return sha1
+	except:
+		return
+
+def s_caps_ver():
+	return encode_caps_ver('gateway', 'mrim', server_features)
+
 def c_caps_ver():
-	s = 'client/pc<'
-	for feature in client_features:
-		s += feature + '<'
-	return base64.encodestring(sha.new(s).digest()).strip()
+	return encode_caps_ver('client', 'pc', client_features)
