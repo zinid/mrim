@@ -1,3 +1,9 @@
+2007-10-27  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/transport.py, src/glue.py, src/utils.py, src/config.py, INSTALL:
+	 XEP-0115: new hash functions support: md5, sha-1, sha-224, sha-256, sha-384, sha-512.
+	 XEP-0115: now Mrim uses sha-384 as a default hash function (ha-ha-ha).
+	 Migrating on Python >= 2.5. No backward compatibilities are provided.
+
 2007-10-23  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/transport.py, src/glue.py, src/utils.py:
 	 Entity Capabilities caching (full support for XEP-0115).
