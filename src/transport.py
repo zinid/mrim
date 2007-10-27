@@ -144,9 +144,9 @@ class XMPPTransport(gw.XMPPSocket):
 				self.send(reply)
 		elif jid_to==self.name and typ=='result' and not node:
 			if self.requests.has_key(_id):
-				ver = self.requests[_id]
+				caps = self.requests[_id]
 				del self.requests[_id]
-				self.cache_features(ver, iq.getQueryChildren())
+				self.cache_features(caps, iq.getQueryChildren())
 		else:
 			self.send_not_implemented(iq)
 
@@ -388,7 +388,7 @@ class XMPPTransport(gw.XMPPSocket):
 				mmp_conn = pool.get(jid_from)
 				if mmp_conn:
 					mmp_conn.exit()
-				self.mrim_connection_start(jid_from, None, None, "", iq)
+				self.mrim_connection_start(jid_from, iq_register=iq)
 			elif query_tag.getTag('remove'):
 				account = profile.Profile(jid_from_stripped)
 				if account.remove():
@@ -820,11 +820,13 @@ class XMPPTransport(gw.XMPPSocket):
 		if mmp_conn:
 			self.show_status(jid_from, priority, show, mmp_conn)
 		else:
-			caps = presence.getTag('c', namespace=xmpp.NS_CAPS)
-			ver = ""
-			if caps:
-				ver = caps.getAttr('ver')
-			self.mrim_connection_start(jid_from, show, priority, ver)
+			c = presence.getTag('c', namespace=xmpp.NS_CAPS)
+			caps = ("", "")
+			if c:
+				ver = c.getAttr('ver') or ""
+				algo = c.getAttr('hash') or "sha-1"
+				caps = (ver, algo)
+			self.mrim_connection_start(jid_from, show, priority, caps)
 
 	def presence_unavailable_handler(self, presence):
 		jid_from = presence.getFrom()
@@ -989,12 +991,12 @@ class XMPPTransport(gw.XMPPSocket):
 		else:
 			return [instr,email,passwd]
 
-	def request_caps(self, ver, to):
-		if self.caps.has_key(ver):
+	def request_caps(self, caps, to):
+		if self.caps.has_key(caps):
 			return
-		if utils.decode_caps_ver(ver):
+		if utils.decode_caps_ver(caps):
 			i = self.next_id()
-			self.requests[i] = ver
+			self.requests[i] = caps
 			iq = xmpp.Iq(typ='get', queryNS=xmpp.NS_DISCO_INFO, frm=self.name, to=to)
 			iq.setAttr('id', i)
 			self.send(iq)
@@ -1018,6 +1020,7 @@ class XMPPTransport(gw.XMPPSocket):
 				mmp_conn.broadcast_online(jid)
 			if (maxshow != curshow) or force:
 				ricochet = xmpp.Presence(frm=self.name)
+				utils.add_caps_s(ricochet)
 				if maxshow in ['dnd', 'xa', 'away']:
 					ricochet.setShow('away')
 				for resource in mmp_conn.getResources():
@@ -1026,7 +1029,7 @@ class XMPPTransport(gw.XMPPSocket):
 					ricochet.setTo(To)
 					self.send(ricochet)
 
-	def mrim_connection_start(self, jid, show, priority=None, ver="", iq_register=None):
+	def mrim_connection_start(self, jid, show=None, priority=None, caps=("", ""), iq_register=None):
 		if iq_register:
 			user = iq_register.getTag('query').getTagData('email')
 			password = iq_register.getTag('query').getTagData('password')
@@ -1041,7 +1044,7 @@ class XMPPTransport(gw.XMPPSocket):
 			self.cancel_timer(timer)
 		except:
 			pass
-		glue.MMPConnection(user,password,self,jid,priority,show,ver,iq_register).run()
+		glue.MMPConnection(user,password,self,jid,priority,show,caps,iq_register).run()
 
 	def send_not_implemented(self, iq):
 		if iq.getType() in ['set','get']:
@@ -1106,9 +1109,10 @@ class XMPPTransport(gw.XMPPSocket):
 		self._id = str(int(self._id) + 1)
 		return self._id
 
-	def cache_features(self, ver, payload):
+	def cache_features(self, caps, payload):
 		category, typ = '', ''
 		features = []
+		ver, algo = caps
 		for i in payload:
 			if i.getName() == 'identity':
 				category = i.getAttr('category')
@@ -1116,5 +1120,6 @@ class XMPPTransport(gw.XMPPSocket):
 			elif i.getName() == 'feature' and i.getAttr('var'):
 				feature = i.getAttr('var')
 				features.append(feature)
-		if utils.encode_caps_ver(category, typ, features) == ver:
-			self.caps[ver] = features
+		if utils.encode_caps_ver(category, typ, features, algo) == ver:
+			self.caps[caps] = features
+			print self.caps

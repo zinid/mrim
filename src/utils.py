@@ -14,7 +14,7 @@ import zlib
 import base64
 import cStringIO
 import xmpp
-import sha
+import hashlib
 
 conf = mrim.conf
 ENCODING = 'utf-8'
@@ -381,23 +381,47 @@ def get_proxy(proxy_str):
 	host, port = proxy_str.split('http://')[1].split(':')
 	return (host, int(port))
 
-def encode_caps_ver(category, typ, features):
+def encode_caps_ver(category, typ, features, algo="sha-1"):
 	features.sort()
-	s = 'category/' + typ + '<'
+	h = ""
+	s = category + '/' + typ + '<'
 	for feature in features:
 		s += feature + '<'
-	return base64.encodestring(sha.new(s).digest()).strip()
+	if algo == "md5":
+		h = hashlib.md5(s).digest()
+	elif algo == "sha-1" or not algo:
+		h = hashlib.sha1(s).digest()
+	elif algo == "sha-224":
+		h = hashlib.sha224(s).digest()
+	elif algo == "sha-256":
+		h = hashlib.sha256(s).digest()
+	elif algo == "sha-384":
+		h = hashlib.sha384(s).digest()
+	elif algo == "sha-512":
+		h = hashlib.sha512(s).digest()
+	return base64.b64encode(h)
 
-def decode_caps_ver(ver):
+def decode_caps_ver((ver, algo)):
 	try:
-		sha1 = base64.decodestring(ver)
-		if len(sha1) == 20:
-			return sha1
+		h = base64.b64decode(ver)
+		if (algo == "md5" and len(h) == 16) or \
+		   (algo == "sha-1" and len(h) == 20) or \
+		   (algo == "sha-224" and len(h) == 28) or \
+		   (algo == "sha-256" and len(h) == 32) or \
+		   (algo == "sha-384" and len(h) == 48) or \
+		   (algo == "sha-512" and len(h) == 64):
+			return h
+		else:
+			return
 	except:
 		return
 
-def s_caps_ver():
-	return encode_caps_ver('gateway', 'mrim', server_features)
+SERVER_CAPS = encode_caps_ver('gateway', 'mrim', server_features, "sha-384")
+CLIENT_CAPS = encode_caps_ver('client', 'pc', client_features, "sha-384")
+NODE = "http://svn.xmpp.ru/repos/mrim"
 
-def c_caps_ver():
-	return encode_caps_ver('client', 'pc', client_features)
+def add_caps_c(presence):
+	presence.setTag('c', namespace=xmpp.NS_CAPS, attrs={'node':'none','hash':'sha-384','ver':CLIENT_CAPS})
+
+def add_caps_s(presence):
+	presence.setTag('c', namespace=xmpp.NS_CAPS, attrs={'node':NODE,'hash':'sha-384','ver':SERVER_CAPS})
