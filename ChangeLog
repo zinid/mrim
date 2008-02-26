@@ -1,3 +1,7 @@
+2008-02-26  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/transport.py:
+	 Fixed jabber:iq:gateway reply.
+
 2007-10-27  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/transport.py, src/glue.py, src/utils.py, src/config.py, INSTALL:
 	 XEP-0115: new hash functions support: md5, sha-1, sha-224, sha-256, sha-384, sha-512.

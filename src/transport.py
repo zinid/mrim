@@ -434,7 +434,7 @@ class XMPPTransport(gw.XMPPSocket):
 		elif (typ=='set') and (jid_to_stripped==self.name) and iq_children:
 			e_mail = [node.getData() for node in iq_children if node.getName()=='prompt']
 			if len(e_mail) == 1:
-				prompt = xmpp.simplexml.Node('prompt')
+				prompt = xmpp.simplexml.Node('jid')
 				prompt.setData(utils.mail2jid(e_mail[0]))
 				repl = iq.buildReply(typ='result')
 				repl.setQueryPayload([prompt])
