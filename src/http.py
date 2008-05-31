@@ -6,6 +6,7 @@ import traceback
 import sys
 import utils
 import email
+import resolver
 
 TIMEOUT = 30 # seconds
 BUFLEN = 8192
@@ -27,10 +28,11 @@ class GetUrl(async.dispatcher_with_send):
 		self.domain, self.user = encode_mail(mail)
 		if proxy:
 			self.url = 'http://%s/%s/%s/_mrimavatar' % (AVT_HOST, self.domain, self.user)
-			self.server = proxy
+			host, port = proxy
+			self.server = (resolver.gethostbyname(host), port)
 		else:
 			self.url = '/%s/%s/_mrimavatar' % (self.domain, self.user)
-			self.server = (AVT_HOST, 80)
+			self.server = (resolver.gethostbyname(AVT_HOST), 80)
 
 	#def __del__(self):
 	#	print "deleting http.GetUrl @", self

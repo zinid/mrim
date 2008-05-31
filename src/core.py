@@ -14,6 +14,7 @@ import errno
 import logging
 import mrim
 import base64
+import resolver
 
 conf = mrim.conf
 
@@ -45,7 +46,7 @@ class Client(async.dispatcher_with_send):
 		self.pinger_timer = 0
 		self.connect_timer = 0
 		self.ping_period = 30
-		self.mrim_host = server
+		self.mrim_host = resolver.gethostbyname(server)
 		self.mrim_port = port
 		async.dispatcher_with_send.__init__(self)
 		self.logger = logger

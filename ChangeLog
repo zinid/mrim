@@ -1,3 +1,7 @@
+2008-05-31  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/init.py, src/http.py, src/resolver.py, src/core.py:
+	 Hack: caching non-blocking resolver.
+
 2008-02-26  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/transport.py:
 	 Fixed jabber:iq:gateway reply.
