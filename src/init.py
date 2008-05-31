@@ -6,6 +6,7 @@ import traceback
 import logging
 import os
 import re
+import resolver
 
 conf = mrim.conf
 
@@ -123,6 +124,8 @@ def start():
 		except:
 			logger.critical("Invalid format of HTTP-proxy. No proxy will be used.")
 			conf.http_proxy = None
+	logger.critical("Starting the caching resolver in a separate thread.")
+	resolver.start(['mrim.mail.ru', 'avt.foto.mail.ru'])
 	while 1:
 		try:
 			xmpp_con = transport.XMPPTransport(conf.name,conf.disconame,
