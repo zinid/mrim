@@ -1,0 +1,15 @@
+unix/async.py implements a poll-based socket loop.
+epoll (Linux) is supported via python-epoll
+library (http://sourceforge.net/projects/pyepoll).
+kqueue/kevent (FreeBSD) and kpoll (Solaris) are not
+supported yet.
+
+Also it has more accurate and fast timers. A precision
+of a timer is about 10 milliseconds (1 ms is a reality but
+makes no much sense in our case). Timers are kept in a
+new structure, so setting a timer has an O(log(N)) time
+effort, and deleting a timer has now an O(1) time effort.
+
+This module is recommended to use on UNIX-like systems
+(POSIX systems with poll(2) support), especially on
+heavy loaded Linux servers with epoll(4) enabled.
