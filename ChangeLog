@@ -1,3 +1,7 @@
+2008-06-03  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* unix/*:
+	 Platform-dependent code.
+
 2008-06-02  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/glue.py:
 	 updatePriority() bugfix.
