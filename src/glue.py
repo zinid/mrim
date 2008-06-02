@@ -626,7 +626,7 @@ class MMPConnection(core.Client):
 					if r[1] == resource:
 						self.prios.remove(r)
 						bisect.insort(self.prios, (prio, resource, show))
-			except TypeError:
+			except TypeError, ValueError:
 				pass
 
 	def getMaxPriority(self):
