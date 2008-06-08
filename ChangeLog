@@ -1,5 +1,9 @@
+2008-06-08  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/unix/async.py:
+	 Don't write to a socket before POLLOUT event.
+
 2008-06-03  Evgeniy Khramtsov  <xramtsov@gmail.com>
-	* unix/*:
+	* src/unix/*:
 	 Platform-dependent code.
 
 2008-06-02  Evgeniy Khramtsov  <xramtsov@gmail.com>

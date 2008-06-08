@@ -286,6 +286,7 @@ class dispatcher:
 
     def handle_expt(self):
         self.log_info('unhandled exception', 'warning')
+        self.close()
 
     def handle_read(self):
         self.log_info('unhandled read event', 'warning')
@@ -312,7 +313,7 @@ class dispatcher_with_send(dispatcher):
         dispatcher.__init__(self, sock)
         self.out_buffer = ''
 
-    def initiate_send(self):
+    def handle_write(self):
         num_sent = 0
         num_sent = dispatcher.async_send(self, self.out_buffer)
         self.out_buffer = self.out_buffer[num_sent:]
@@ -321,14 +322,12 @@ class dispatcher_with_send(dispatcher):
         else:
             pollster.register(self._fileno, FLAGS)
 
-    def handle_write(self):
-        self.initiate_send()
-
     def async_send(self, data):
         if self.debug:
             self.log_info('sending %s' % repr(data))
-        self.out_buffer = self.out_buffer + data
-        self.initiate_send()
+        self.out_buffer += data
+        if self.out_buffer:
+            pollster.register(self._fileno, FLAGS | select.POLLOUT)
 
 # ---------------------------------------------------------------------------
 # timers processing
