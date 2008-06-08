@@ -2,6 +2,7 @@
 	* src/unix/async.py:
 	 Don't write to a socket before POLLOUT event.
 	 Buffer overrun protection.
+	 Small fix in process_timers().
 
 2008-06-03  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/unix/*:

@@ -11,7 +11,8 @@ import weakref
 from errno import EALREADY, EINPROGRESS, EWOULDBLOCK, ECONNRESET, \
      ENOTCONN, ESHUTDOWN, EINTR, EISCONN, errorcode
 
-FLAGS = select.POLLIN | select.POLLPRI | select.POLLERR | select.POLLHUP | select.POLLNVAL
+FLAGS = select.POLLIN  | select.POLLPRI  | select.POLLERR | \
+        select.POLLHUP | select.POLLNVAL | select.POLLOUT
 
 try:
     socket_map
@@ -103,7 +104,7 @@ class dispatcher:
 
     def add_channel(self):
         socket_map[self._fileno] = self
-        pollster.register(self._fileno, FLAGS | select.POLLOUT)
+        pollster.register(self._fileno, FLAGS)
 
     def del_channel(self):
         fd = self._fileno
@@ -325,16 +326,16 @@ class dispatcher_with_send(dispatcher):
             # gigabytes of swamped memory.
             self.handle_expt()
         elif bufsize:
-            pollster.register(self._fileno, FLAGS | select.POLLOUT)
-        else:
             pollster.register(self._fileno, FLAGS)
+        else:
+            pollster.register(self._fileno, FLAGS ^ select.POLLOUT)
 
     def async_send(self, data):
         if self.debug:
             self.log_info('sending %s' % repr(data))
         self.out_buffer += data
         if self.out_buffer:
-            pollster.register(self._fileno, FLAGS | select.POLLOUT)
+            pollster.register(self._fileno, FLAGS)
 
 # ---------------------------------------------------------------------------
 # timers processing
@@ -343,9 +344,8 @@ PRECISION = 0.01
 
 def process_timers(maxtimeout):
     while timers:
-        stoptime = timers[0][0]
-        now = ticks()
-        if now >= stoptime:
+        delta = timers[0][0] - ticks()
+        if delta <= PRECISION:
             stoptime, tref, objref = heapq.heappop(timers)
             obj = objref()
             if obj and obj.timers.has_key(tref):
@@ -356,8 +356,7 @@ def process_timers(maxtimeout):
                 except:
                     obj.handle_error()
         else:
-            timeout = max(PRECISION, stoptime-now)
-            return min(timeout, maxtimeout)
+            return delta
     return maxtimeout
 
 def compact_traceback():
