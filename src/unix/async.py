@@ -317,7 +317,14 @@ class dispatcher_with_send(dispatcher):
         num_sent = 0
         num_sent = dispatcher.async_send(self, self.out_buffer)
         self.out_buffer = self.out_buffer[num_sent:]
-        if self.out_buffer:
+        bufsize = len(self.out_buffer)
+        if bufsize > 102400:
+            # If the bufsize is more than 100Kb, we
+            # generate an exception event. It is much
+            # better to close the connection than to have
+            # gigabytes of swamped memory.
+            self.handle_expt()
+        elif bufsize:
             pollster.register(self._fileno, FLAGS | select.POLLOUT)
         else:
             pollster.register(self._fileno, FLAGS)
