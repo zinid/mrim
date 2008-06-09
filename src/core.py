@@ -49,6 +49,7 @@ class Client(async.dispatcher_with_send):
 		self.mrim_host = resolver.gethostbyname(server)
 		self.mrim_port = port
 		async.dispatcher_with_send.__init__(self)
+		self.buf_limit = 1024*100
 		self.logger = logger
 		self.myname = ''
 		self.wait_for_header = True

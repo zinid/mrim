@@ -313,12 +313,13 @@ class dispatcher_with_send(dispatcher):
     def __init__(self, sock=None):
         dispatcher.__init__(self, sock)
         self.out_buffer = ''
+        self.buf_limit = 'unlimited'
 
     def handle_write(self):
         num_sent = dispatcher.async_send(self, self.out_buffer)
         self.out_buffer = self.out_buffer[num_sent:]
-        if len(self.out_buffer) > 102400:
-            # If the buffer size is more than 100Kb, we
+        if len(self.out_buffer) > self.buf_limit:
+            # If the buffer size is more than buf_limit, we
             # generate an exception event. It is much
             # better to close the connection than to have
             # gigabytes of swamped memory.

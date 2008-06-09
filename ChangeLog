@@ -1,3 +1,9 @@
+2008-06-10  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/unix/async.py:
+	 out_buffer is not limited by default.
+	* src/core.py:
+	 Added default out_buffer limit for legacy connection: 100Kb.
+
 2008-06-08  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/unix/async.py:
 	 Don't write to a socket before POLLOUT event.
