@@ -34,6 +34,7 @@ class Profile:
 		}
 
 		if os.path.exists(self.file):
+			os.utime(self.file, None)
 			fd = open(self.file)
 			self.xdb = xmpp.Node(node=fd.read())
 			fd.close()

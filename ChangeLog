@@ -1,3 +1,7 @@
+2008-06-11  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/profile.py:
+	 Change XDB file's status on login.
+
 2008-06-10  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/unix/async.py:
 	 out_buffer is not limited by default.
