@@ -178,11 +178,10 @@ def str2win(s):
 		raise TypeError('value %s is neither unicode nor string' % s)
 	return r
 
-def translate(s, t1, t2, index=0):
-	if index<len(t1):
-		return translate(s.replace(t1[index],t2[index]), t1, t2, index+1)
-	else:
-		return s
+def translate(s, t1, t2):
+	for i in range(len(t1)):
+		s.replace(t1[i], t2[i])
+	return s
 
 def winrtf(s):
 	return translate(s, INCHARS, OUTCHARS)

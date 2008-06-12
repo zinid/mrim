@@ -3,7 +3,7 @@
 import xmpp
 from mmptypes import *
 import utils
-import profile
+import spool
 import i18n
 import time
 import traceback
@@ -355,7 +355,7 @@ def process_mail_command_xdata(jid, xdata):
 		return False
 	mbox_status = fields['mbox_status']
 	new_mail = fields['new_mail']
-	options = profile.Options(jid)
+	options = spool.Options(jid)
 	options.setNewMail(new_mail)
 	options.setMboxStatus(mbox_status)
 	return True

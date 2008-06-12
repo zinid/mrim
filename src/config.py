@@ -8,7 +8,7 @@ import logging
 
 COPYRIGHT = 'Copyright (c) 2005-2007 Jabber.Ru'
 PROGRAM = 'Mrim'
-VERSION = '0.2-svn-20080611'
+VERSION = '0.2-svn-20080612'
 DEFAULTS = {
 	'server':'localhost',
 	'disconame':'Mail.ru IM',
@@ -21,6 +21,7 @@ DEFAULTS = {
 	'psyco':'off',
 	'timestamp':'%%d/%%m/%%y-%%H:%%M:%%S',
 	'http_proxy': '',
+	'profiling':'off',
 	'xml_formatting': 'off',
 	'pidfile': ''
 }
@@ -77,6 +78,7 @@ class Config:
 		if self.profile_type == 'xml':
 			self.profile_dir = config.get('profile', 'dir')
 		self.logfile = config.get('logger','logfile')
+		self.profiling = config.getboolean('logger', 'profiling')
 		self.loglevel = config.get('logger', 'loglevel')
 		self.timestamp = config.get('logger', 'timestamp')
 		self.http_proxy = config.get('main', 'http_proxy')

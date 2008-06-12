@@ -2,7 +2,7 @@
 import async
 import xmpp
 
-BUFLEN = 1024
+BUFLEN = 8192
 
 class XMPPSocket(async.dispatcher_with_send, xmpp.Component):
 

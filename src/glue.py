@@ -6,7 +6,7 @@ from mmptypes import *
 import xmpp
 import i18n
 import traceback
-import profile
+import spool
 import utils
 import sys
 import time
@@ -42,7 +42,7 @@ class MMPConnection(core.Client):
 		self.addResource(xmpp.JID(jid).getResource(), priority, show, ver)
 		self.current_status = self.init_status
 		self.authed_users = []
-		self.Roster = profile.Profile(self.jid)
+		self.Roster = spool.Profile(self.jid)
 		core.Client.__init__(self,self.user,self.password,xmpp_conn.logger,
 			                 agent=conf.agent,status=self.init_status,proxy=conf.http_proxy)
 		pool.add(self.jid, self)
@@ -148,7 +148,7 @@ class MMPConnection(core.Client):
 			ok_iq = self.iq_register.buildReply(typ='result')
 			ok_iq.setPayload([],add=0)
 			self.xmpp_conn.send(ok_iq)
-			account = profile.Profile(self.jid)
+			account = spool.Profile(self.jid)
 			account.setUsername(self.user)
 			account.setPassword(self.password)
 			self.exit(notify=False)
@@ -319,7 +319,7 @@ class MMPConnection(core.Client):
 		self.send_stanza(composing, self.jid)
 
 	def mmp_handler_got_mbox_status(self, url, total, unread):
-		if not unread or profile.Options(self.jid).getMboxStatus()!='1':
+		if not unread or spool.Options(self.jid).getMboxStatus()!='1':
 			return
 		body = "Непрочитанных писем: %s\nВсего писем: %s" % (unread, total)
 		subject = "У вас есть непрочитанные письма"
@@ -333,7 +333,7 @@ class MMPConnection(core.Client):
 		self.send_stanza(msg, self.jid)
 
 	def mmp_handler_got_new_mail(self, url, number, sender, subject, unix_time):
-		if profile.Options(self.jid).getNewMail()!='1':
+		if spool.Options(self.jid).getNewMail()!='1':
 			return
 		ltime = time.strftime('%c', time.localtime(unix_time))
 		xmpp_subject = "Вам пришло новое почтовое сообщение"

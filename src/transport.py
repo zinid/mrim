@@ -3,7 +3,7 @@ import xmpp
 from mmptypes import *
 import utils
 import time
-import profile
+import spool
 import core
 import glue
 import pool
@@ -390,9 +390,9 @@ class XMPPTransport(gw.XMPPSocket):
 					mmp_conn.exit()
 				self.mrim_connection_start(jid_from, iq_register=iq)
 			elif query_tag.getTag('remove'):
-				account = profile.Profile(jid_from_stripped)
+				account = spool.Profile(jid_from_stripped)
 				if account.remove():
-					profile.Options(jid_from).remove()
+					spool.Options(jid_from).remove()
 					ok_iq = iq.buildReply(typ='result')
 					ok_iq.setPayload([],add=0)
 					self.send(ok_iq)
@@ -639,7 +639,7 @@ class XMPPTransport(gw.XMPPSocket):
 		sessionid = command.getAttr('sessionid')
 		action = command.getAttr('action')
 		node = command.getAttr('node')
-		if not profile.is_registered(jid_from):
+		if not spool.is_registered(jid_from):
 			err = xmpp.ERR_REGISTRATION_REQUIRED
 			txt = i18n.NOT_REGISTERED
 			self.send_error(iq,err,txt)
@@ -664,7 +664,7 @@ class XMPPTransport(gw.XMPPSocket):
 	def process_mail_cmd(self, iq, jid, command, sessionid, action):
 		if action=='execute' or (not action and not sessionid):
 			response = forms.get_cmd_header('executing','mail')
-			opts = profile.Options(jid)
+			opts = spool.Options(jid)
 			response.setPayload([
 				forms.get_mail_form(opts.getMboxStatus(),opts.getNewMail())
 			])
@@ -979,7 +979,7 @@ class XMPPTransport(gw.XMPPSocket):
 				mmp_conn.cancel_composing(mail_to)
 
 	def get_register_form(self, jid):
-		user = profile.Profile(jid).getUsername()
+		user = spool.Profile(jid).getUsername()
 		instr = xmpp.Node('instructions')
 		instr.setData(i18n.ENTER_EMAIL_AND_PASSWORD)
 		email = xmpp.Node('email')
@@ -1034,7 +1034,7 @@ class XMPPTransport(gw.XMPPSocket):
 			user = iq_register.getTag('query').getTagData('email')
 			password = iq_register.getTag('query').getTagData('password')
 		else:
-			account = profile.Profile(xmpp.JID(jid).getStripped())
+			account = spool.Profile(xmpp.JID(jid).getStripped())
 			user = account.getUsername()
 			password = account.getPassword()
 			if not (user and password):
