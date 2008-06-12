@@ -1,3 +1,16 @@
+2008-06-12  Evgeniy Khramtsov  <xramtsov@gmail.com>
+	* src/forms.py, src/glue.py, src/transport.py:
+	 Renaming module profile to spool.
+	* src/spool.py:
+	 Module profile has been renamed to spool.
+	* src/gw.py:
+	 Default buffer size is 8Kb instead of 1Kb.
+	* src/utils.py:
+	 Removed recursion from translate() function.
+	* src/mrim.py, src/config.py:
+	 New option added: 'profiling'.
+	 Support for profiling.
+
 2008-06-11  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/profile.py:
 	 Change XDB file's status on login.
