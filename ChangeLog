@@ -10,6 +10,8 @@
 	* src/mrim.py, src/config.py:
 	 New option added: 'profiling'.
 	 Support for profiling.
+	* src/glue.py:
+	 addResource() bugfix.
 
 2008-06-11  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/profile.py:

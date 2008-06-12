@@ -657,7 +657,7 @@ class MMPConnection(core.Client):
 			self.resources[resource] = ver
 			try:
 				prio = int(priority)
-			except TypeError:
+			except TypeError, ValueError:
 				prio = 0
 			bisect.insort(self.prios, (prio, resource, show))
 			to = xmpp.JID(self.jid)
