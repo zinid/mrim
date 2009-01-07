@@ -420,10 +420,10 @@ class Client(async.dispatcher_with_send):
 				avatara = msg.body
 				album = msg.album
 			elif msg.code != 404:
-				http_err = "Can't connect to http://foto.mail.ru (%s)" % msg.reason
+				http_err = "Can't connect to http://avt.foto.mail.ru (%s)" % msg.reason
 				self.log(logging.ERROR, http_err)
 		else:
-			http_err = "Can't connect to http://foto.mail.ru (%s)" % result[1]
+			http_err = "Can't connect to http://avt.foto.mail.ru (%s)" % result[1]
 			self.log(logging.ERROR, http_err)
 		ackf(avatara, content_type, album, **acka)
 
