@@ -66,7 +66,7 @@ class GetUrl(async.dispatcher_with_send):
 		try:
 			msg = Response(self.buf)
 			msg.encode()
-			msg.album = 'http://%s/%s/%s/' % (foto.mail.ru, self.domain, self.user)
+			msg.album = 'http://%s/%s/%s/' % ('foto.mail.ru', self.domain, self.user)
 			result = ("ok", msg)
 		except:
 			result = ("error", "invalid HTTP response: '%s'" % self.buf)
