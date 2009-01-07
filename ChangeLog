@@ -1,3 +1,6 @@
+2009-01-07  Vladimir Shelukhin <vladimir.shelukhin@gmail.com>
+	* src/core.py, src/http.py, src/init.py:
+	 Updated photo album url
 2008-06-12  Evgeniy Khramtsov  <xramtsov@gmail.com>
 	* src/forms.py, src/glue.py, src/transport.py:
 	 Renaming module profile to spool.
