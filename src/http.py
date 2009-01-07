@@ -10,7 +10,7 @@ import resolver
 
 TIMEOUT = 30 # seconds
 BUFLEN = 8192
-AVT_HOST = "avt.foto.mail.ru"
+AVT_HOST = "foto.mail.ru"
 
 def encode_mail(mail):
 	user, domain = mail.split("@")
