@@ -64,6 +64,8 @@ invalid_chars = re.compile(
 RTF_H = '{\\rtf1\\ansi\\ansicpg1251\\deff0\\deflang1049{\\fonttbl{\\f0\\fnil\\fcharset204 Tahoma;}}\r\n{\\colortbl ;\\red0\\green0\\blue0;}\r\n\\viewkind4\\uc1\\pard\\cf1\\f0\\fs18 '
 RTF_T = '\\par\r\n}\r\n'
 
+SMILE_RE = re.compile('''<SMILE>id=\d{3} alt=':[^<]+:'</SMILE>''')
+
 INTRANSTBL = [chr(i) for i in range(0x0,0x09)+range(0x0b,0x0d)+range(0x7f,256)]
 OUTTRANSTBL = [hex(ord(i)).replace('0x',"\\'") for i in INTRANSTBL]
 INSYMS = ['\\','\r','\n','\t','{','}']
@@ -89,8 +91,11 @@ OUTSMILES = [
 	'<###20###img009>'
 ]
 
-INCHARS = tuple(INSYMS+INTRANSTBL+INSMILES)
-OUTCHARS = tuple(OUTSYMS+OUTTRANSTBL+OUTSMILES)
+NEW_INSMILES = [':)']
+NEW_OUTSMILES = ['''<SMILE>id=409 alt=':Я круче:'</SMILE>''']
+
+INCHARS = tuple(INSYMS+INTRANSTBL+NEW_INSMILES)
+OUTCHARS = tuple(OUTSYMS+OUTTRANSTBL+NEW_OUTSMILES)
 
 IN_TRANSLIT_TBL = tuple(["'",chr(0xa8),chr(0xb8)] + [chr(i) for i in range(0xc0,256)])
 _lat = [
