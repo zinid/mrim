@@ -8,13 +8,14 @@ import logging
 
 COPYRIGHT = 'Copyright (c) 2005-2007 Jabber.Ru'
 PROGRAM = 'Mrim'
-VERSION = '0.2-svn-20080612'
+VERSION = '0.2-svn-20090129'
 DEFAULTS = {
 	'server':'localhost',
 	'disconame':'Mail.ru IM',
 	'port':'5347',
 	'admins':'',
 	'reconnect':'on',
+	'reconnect_timeout':'60',
 	'probe':'on',
 	'show_os':'on',
 	'show_version':'on',
@@ -84,6 +85,7 @@ class Config:
 		self.http_proxy = config.get('main', 'http_proxy')
 		self.xml_formatting = config.getboolean('logger', 'xml_formatting')
 		self.pidfile = config.get('main', 'pidfile')
+		self.reconnect_timeout = config.getint('main', 'reconnect_timeout')
 
 	def get_os(self):
 		v = [str(x) for x in sys.version_info[:3]]

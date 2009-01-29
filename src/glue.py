@@ -127,7 +127,7 @@ class MMPConnection(core.Client):
 		self.log(logging.INFO, "Connection error (%s): %s" % (self.mrim_host, errtxt))
 		timeout = random.choice(xrange(1,10))
 		if self.state != 'session_established' and not self.iq_register:
-			timeout = 60
+			timeout = conf.reconnect_timeout
 			error = xmpp.Presence(to=self.jid, frm=conf.name)
 			error_txt = i18n.REMOTE_SERVER_ERROR
 			self.xmpp_conn.send_error(error,xmpp.ERR_INTERNAL_SERVER_ERROR,error_txt,reply=0)
