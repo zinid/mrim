@@ -70,6 +70,12 @@ Example config file is located in Mrim directory.
 		Default is on.
 		Format: on|off
 		Automatically reconnects users after tcp session failure.
+	reconnect_timeout
+		Default: 60.
+		Format: positive integer.
+		A timeout in seconds to wait before next connection attempt. Only makes sense
+		when a previous session was not established completely. In the case
+		it was, a timeout is a random number from 1 to 10 (secs).
 	probe
 		Default is on.
 		Format: on|off
