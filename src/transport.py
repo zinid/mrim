@@ -55,6 +55,8 @@ class XMPPTransport(gw.XMPPSocket):
 		async.loop(use_poll=True)
 
 	def process_iq(self, conn, iq):
+		if not self.check_access(iq):
+			return
 		ns = iq.getQueryNS()
 		typ = iq.getType()
 		if ns == xmpp.NS_REGISTER:
@@ -87,6 +89,8 @@ class XMPPTransport(gw.XMPPSocket):
 			self.send_not_implemented(iq)
 
 	def process_presence(self, conn, presence):
+		if not self.check_access(presence):
+			return
 		typ = presence.getType()
 		if typ == 'unavailable':
 			self.presence_unavailable_handler(presence)
@@ -106,6 +110,8 @@ class XMPPTransport(gw.XMPPSocket):
 			self.presence_available_handler(presence)
 
 	def process_message(self, conn, message):
+		if not self.check_access(message):
+			return
 		jid_to = message.getTo()
 		jid_to_stripped = jid_to.getStripped()
 		if message.getType() == 'error':
@@ -1123,3 +1129,14 @@ class XMPPTransport(gw.XMPPSocket):
 		if utils.encode_caps_ver(category, typ, features, algo) == ver:
 			self.caps[caps] = features
 			print self.caps
+
+	def check_access(self, stanza):
+		frm = stanza.getFrom()
+		frm_domain = frm.getDomain()
+		domains = conf.allow_domains
+		if domains and (frm_domain not in domains):
+			self.send_error(stanza,
+			error=xmpp.ERR_PAYMENT_REQUIRED)
+			return False
+		else:
+			return True

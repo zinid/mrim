@@ -8,7 +8,7 @@ import logging
 
 COPYRIGHT = 'Copyright (c) 2005-2007 Jabber.Ru'
 PROGRAM = 'Mrim'
-VERSION = '0.2-svn-20090129'
+VERSION = '0.2-svn-20090212'
 DEFAULTS = {
 	'server':'localhost',
 	'disconame':'Mail.ru IM',
@@ -24,7 +24,8 @@ DEFAULTS = {
 	'http_proxy': '',
 	'profiling':'off',
 	'xml_formatting': 'off',
-	'pidfile': ''
+	'pidfile': '',
+	'allow_domains': []
 }
 
 class Config:
@@ -59,6 +60,11 @@ class Config:
 		self.psyco = config.getboolean('main', 'psyco')
 		admins = config.get('main', 'admins')
 		self.admins = re.split(' *, *',admins)
+		allow_domains = config.get('main', 'allow_domains')
+		if allow_domains.strip():
+			self.allow_domains = re.split(' *, *',allow_domains)
+		else:
+			self.allow_domains = []
 		self.reconnect = config.getboolean('main', 'reconnect')
 		self.probe = config.getboolean('main', 'probe')
 		self.program = PROGRAM

@@ -1,3 +1,8 @@
+2009-02-12  Evgeniy Khramtsov  <xramtsov@gmail.com>
+
+	* src/transport.py, src/config.py:
+	 Added new option 'allow_domains'.
+
 2009-01-29  Evgeniy Khramtsov  <xramtsov@gmail.com>
 
 	* src/glue.py, src/config.py:
