@@ -1,3 +1,13 @@
+2009-08-05  Evgeniy Khramtsov  <xramtsov@gmail.com>
+
+	* src/transport.py, src/config.py:
+	Fixes CAPS disco processing (thanks to Mikhail Stepura).
+
+2009-06-18  Evgeniy Khramtsov  <xramtsov@gmail.com>
+
+	* src/spool.py:
+	Strip bad XML characters.
+
 2009-02-12  Evgeniy Khramtsov  <xramtsov@gmail.com>
 
 	* src/transport.py, src/config.py:
@@ -8,7 +18,7 @@
 	* src/glue.py, src/config.py:
 	 A reconnect timeout is now configured.
 	* INSTALL:
-	 Documented new option 'reconnect_timeout'. 
+	 Documented new option 'reconnect_timeout'.
 
 2009-01-07  Vladimir Shelukhin <vladimir.shelukhin@gmail.com>
 	* src/core.py, src/http.py, src/init.py:
