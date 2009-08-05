@@ -129,16 +129,18 @@ class XMPPTransport(gw.XMPPSocket):
 		typ = iq.getType()
 		_id = iq.getAttr('id')
 		node = iq.getTagAttr('query','node')
-		if jid_to_stripped==self.name and typ=='get' and not node:
+		if jid_to_stripped==self.name and typ=='get' and ((not node) or (node == '#'.join((utils.NODE, utils.SERVER_CAPS)))):
+            #If node is empty or equal NODE#SERVER_CAPS then returm disco
 			reply = iq.buildReply(typ='result')
 			reply.setQueryPayload(self.Features)
 			self.send(reply)
 		elif jid_to_stripped==self.name and typ=='get' and node:
 			self.iq_disco_node_info_handler(iq, node)
 		elif utils.is_valid_email(utils.jid2mail(jid_to_stripped)) and typ=='get':
-			if node:
+			if node and (node != '#'.join(('none', utils.CLIENT_CAPS))):
 				self.iq_disco_user_node_info_handler(iq, node)
 			else:
+            #If node is empty or equal none#CLIENT_CAPS then returm disco
 				ids = {
 					'category':'client',
 					'type':'pc',

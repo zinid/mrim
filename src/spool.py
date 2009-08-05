@@ -186,7 +186,7 @@ class Profile:
 
 	def flush(self):
 		try:
-			s = self.xdb.__str__(fancy=1).encode('utf-8', 'replace')
+			s = self.xdb.__str__(fancy=0).encode('utf-8', 'replace')
 		except:
 			traceback.print_exc()
 			return
@@ -237,7 +237,7 @@ class Options:
 
 	def flush(self):
 		try:
-			s = self.cfg.__str__(fancy=1).encode('utf-8', 'replace')
+			s = self.cfg.__str__(fancy=0).encode('utf-8', 'replace')
 		except:
 			traceback.print_exc()
 			return
