@@ -144,7 +144,7 @@ class XMPPTransport(gw.XMPPSocket):
 				ids = {
 					'category':'client',
 					'type':'pc',
-					'name':utils.jid2mail(jid_to_stripped)
+					'name':'mrim'
 				}
 				feats = forms.get_disco_features(ids, utils.client_features)
 				reply = iq.buildReply(typ='result')
