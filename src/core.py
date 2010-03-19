@@ -231,8 +231,11 @@ class Client(async.dispatcher_with_send):
 				total = mmp_packet.getBodyAttr('total')
 				unread = mmp_packet.getBodyAttr('unread')
 			except KeyError:
-				nickname = mmp_packet.getBodyAttr('nickname')
-				self.myname = utils.win2str(nickname)
+				try:
+					nickname = mmp_packet.getBodyAttr('nickname')
+					self.myname = utils.win2str(nickname)
+				except KeyError:
+					self.myname = self._login
 				self.mmp_get_mbox_key()
 				return
 			self._got_mbox_status(total, unread)
