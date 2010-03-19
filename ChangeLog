@@ -1,3 +1,8 @@
+20010-03-19  Evgeniy Khramtsov  <xramtsov@gmail.com>
+
+	* src/core.py, src/config.py:
+	Fixes MRIM_CS_USER_INFO packet processing
+
 2009-08-05  Evgeniy Khramtsov  <xramtsov@gmail.com>
 
 	* src/transport.py, src/config.py:

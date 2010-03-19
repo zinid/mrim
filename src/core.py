@@ -227,10 +227,14 @@ class Client(async.dispatcher_with_send):
 			self.mmp_handler_got_mailbox_status_old(status)
 
 		elif ptype == MRIM_CS_USER_INFO:
-			total = mmp_packet.getBodyAttr('total')
-			unread = mmp_packet.getBodyAttr('unread')
-			nickname = mmp_packet.getBodyAttr('nickname')
-			self.myname = utils.win2str(nickname)
+			try:
+				total = mmp_packet.getBodyAttr('total')
+				unread = mmp_packet.getBodyAttr('unread')
+			except KeyError:
+				nickname = mmp_packet.getBodyAttr('nickname')
+				self.myname = utils.win2str(nickname)
+				self.mmp_get_mbox_key()
+				return
 			self._got_mbox_status(total, unread)
 
 		elif ptype == MRIM_CS_USER_STATUS:
