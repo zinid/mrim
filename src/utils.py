@@ -338,8 +338,10 @@ def status2show(status):
 	typ, show = None, None
 	if status == STATUS_AWAY:
 		show = 'away'
-	elif status != STATUS_ONLINE:
-		typ = 'unavailable'
+	elif status == STATUS_FLAG_INVISIBLE:
+                show = None
+        elif status != STATUS_ONLINE:
+		typ = 'unavailable'	
 	return (typ,show)
 
 def unpack_rtf(s):

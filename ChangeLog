@@ -1,3 +1,8 @@
+20010-07-15  Evgeniy Khramtsov  <xramtsov@gmail.com>
+
+	* src/utils.py, src/mmptypes.py, src/config.py:
+	Support for invisible contacts (thanks to Trashman)
+
 20010-03-19  Evgeniy Khramtsov  <xramtsov@gmail.com>
 
 	* src/core.py, src/config.py:
