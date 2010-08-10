@@ -8,7 +8,7 @@ import logging
 
 COPYRIGHT = 'Copyright (c) 2005-2010 Jabber.Ru'
 PROGRAM = 'Mrim'
-VERSION = '0.2-svn-20100715'
+VERSION = '0.2-svn-20100811'
 DEFAULTS = {
 	'server':'localhost',
 	'disconame':'Mail.ru IM',

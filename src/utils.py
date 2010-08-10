@@ -53,7 +53,7 @@ server_features = common_features + [
 	xmpp.NS_PING]
 
 mail_pattern = re.compile(
-	'[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,15}@(mail\.ru|inbox\.ru|bk\.ru|list\.ru|corp\.mail\.ru)$'
+	'[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,15}@(mail\.ru|inbox\.ru|bk\.ru|list\.ru|corp\.mail\.ru|chat\.agent)$'
 )
 password_pattern = re.compile('[\040-\176]{4,}$')
 number_pattern = re.compile('\+{0,1}[0-9]+$')
@@ -89,8 +89,8 @@ OUTSMILES = [
 	'<###20###img009>'
 ]
 
-INCHARS = tuple(INSYMS+INTRANSTBL+INSMILES)
-OUTCHARS = tuple(OUTSYMS+OUTTRANSTBL+OUTSMILES)
+INCHARS = tuple(INSYMS+INTRANSTBL)
+OUTCHARS = tuple(OUTSYMS+OUTTRANSTBL)
 
 IN_TRANSLIT_TBL = tuple(["'",chr(0xa8),chr(0xb8)] + [chr(i) for i in range(0xc0,256)])
 _lat = [
@@ -180,7 +180,7 @@ def str2win(s):
 
 def translate(s, t1, t2):
 	for i in range(len(t1)):
-		s.replace(t1[i], t2[i])
+		s = s.replace(t1[i], t2[i])
 	return s
 
 def winrtf(s):
