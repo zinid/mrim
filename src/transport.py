@@ -921,9 +921,12 @@ class XMPPTransport(gw.XMPPSocket):
 
 	def presence_error_handler(self, presence):
 		jid_from = presence.getFrom()
-		mmp_conn = pool.get(jid_from)
-		if mmp_conn:
-			mmp_conn.exit(notify=False)
+		jid_to = presence.getTo()
+		jid_to_stripped = jid_to.getStripped()
+		if jid_to_stripped == self.name:
+			mmp_conn = pool.get(jid_from)
+			if mmp_conn:
+				mmp_conn.exit(notify=False)
 
 	def message_error_handler(self, message):
 		jid_from = message.getFrom()
