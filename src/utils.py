@@ -53,7 +53,7 @@ server_features = common_features + [
 	xmpp.NS_PING]
 
 mail_pattern = re.compile(
-	'[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,35}@(mail\.ru|inbox\.ru|bk\.ru|list\.ru|corp\.mail\.ru|chat\.agent|uin\.icq|aol\.com)$'
+	'^[a-zA-Z0-9_][a-zA-Z0-9_. -]{0, 35}@([a-zA-Z0-9][a-zA-Z0-9-]{0, 61}[a-zA-Z0-9]\. ){1, 3}[a-zA-Z0-9]{2, 62}$'
 )
 password_pattern = re.compile('[\040-\176]{4,}$')
 number_pattern = re.compile('\+{0,1}[0-9]+$')
